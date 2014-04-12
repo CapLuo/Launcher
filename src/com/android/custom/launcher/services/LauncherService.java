@@ -88,4 +88,12 @@ public class LauncherService extends Service {
         return mMusics.get(mCurPosition);
     }
 
+    public boolean isPlaying() {
+        if (mPlayer != null) {
+            return mPlayer.isPlaying();
+        } else {
+            return false;
+        }
+    }
+
 }

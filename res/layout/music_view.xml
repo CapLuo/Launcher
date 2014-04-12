@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/home_music_default_press"
     android:orientation="horizontal" >
@@ -26,6 +26,7 @@
                 android:id="@+id/music_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="singer"
                 android:textSize="@dimen/home_music_view_text_size"
                 android:textStyle="bold" />
 
@@ -33,6 +34,7 @@
                 android:id="@+id/music_singer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="-name"
                 android:textSize="@dimen/home_music_view_text_size" />
         </LinearLayout>
 
@@ -42,14 +44,17 @@
             android:orientation="horizontal" >
 
             <SeekBar
-                android:id="@+id/music_progressbar"
+                android:id="@+id/music_seekbar"
                 android:layout_width="160dp"
-                android:layout_height="4dp" />
+                android:layout_height="10dp"
+                android:progressDrawable="@drawable/drawable_music_seekbar"
+                android:thumb="@drawable/drawable_music_seekbar_thumb" />
 
             <TextView
                 android:id="@+id/music_time"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:text="0:0"
                 android:textSize="@dimen/home_music_view_text_size" />
         </LinearLayout>
 
@@ -87,6 +92,7 @@
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
                 android:orientation="horizontal" >
 
                 <ImageView
@@ -97,11 +103,11 @@
                     android:src="@drawable/drawable_music_volume_button" />
 
                 <SeekBar
-                    android:id="@+id/music_volume_progress"
+                    android:id="@+id/music_volume_seekbar"
                     android:layout_width="40dp"
-                    android:layout_height="5dp"
-                    android:progressDrawable="@drawable/home_music_voice_progress_on"
-                    android:background="@drawable/home_music_voice_progress" />
+                    android:layout_height="10dp"
+                    android:progressDrawable="@drawable/drawable_music_volume_seekbar"
+                    android:thumb="@drawable/drawable_music_volume_seekbar_thumb" />
 
                 <ImageView
                     android:id="@+id/music_list"

@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
 
@@ -109,6 +110,18 @@ public class Launcher extends BaseActivity {
             return mService.getStartTime();
         }
         return 0;
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN ||
+                keyCode == KeyEvent.KEYCODE_VOLUME_UP ||
+                keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
+            if (mService != null && mService.isPlaying()) {
+                mMusic.onKeyDown(keyCode, event);
+            }
+        }
+        return super.onKeyDown(keyCode, event);
     }
 
 }
