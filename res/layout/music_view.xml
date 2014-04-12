@@ -41,7 +41,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal" >
 
-            <ProgressBar
+            <SeekBar
                 android:id="@+id/music_progressbar"
                 android:layout_width="160dp"
                 android:layout_height="4dp" />
@@ -96,10 +96,12 @@
                     android:contentDescription="@drawable/drawable_music_volume_button"
                     android:src="@drawable/drawable_music_volume_button" />
 
-                <ProgressBar
+                <SeekBar
                     android:id="@+id/music_volume_progress"
                     android:layout_width="40dp"
-                    android:layout_height="5dp" />
+                    android:layout_height="5dp"
+                    android:progressDrawable="@drawable/home_music_voice_progress_on"
+                    android:background="@drawable/home_music_voice_progress" />
 
                 <ImageView
                     android:id="@+id/music_list"

@@ -9,7 +9,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
+import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.android.custom.launcher.R;
@@ -18,7 +18,7 @@ public class MusicView extends LinearLayout implements OnClickListener{
 
     private TextView mMusicName, mSinger, mTime;
     private ImageView mPlay, mNext, mPrev, mList, mVolume;
-    private ProgressBar mVolumeBar, mPlayBar;
+    private SeekBar mVolumeBar, mPlayBar;
     private int position = 0;
     private boolean mSoundEnabled = true;
     private boolean isPlaying = false;

@@ -7,6 +7,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -80,8 +81,12 @@ public class Applications extends BaseActivity implements OnItemClickListener, O
         ArrayList<AppItem> apps = new ArrayList<AppItem> ();
         for (int i = 0; i < package_Infos.size(); i++) {
             for (int j = 0; j < resolve_Infos.size(); j++) {
-                if (package_Infos.get(i).packageName.equals(resolve_Infos.get(j).activityInfo.packageName)) {
-                    apps.add(new AppItem(mPackageManager, resolve_Infos.get(j)));
+                if ((package_Infos.get(i).applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) <= 0) {
+                    if (package_Infos.get(i).packageName.equals(resolve_Infos.get(j).activityInfo.packageName)) {
+                        if (!resolve_Infos.get(j).activityInfo.packageName.equals(this.getApplication().getPackageName())) {
+                            apps.add(new AppItem(mPackageManager, resolve_Infos.get(j)));
+                        }
+                    }
                 }
             }
         }
