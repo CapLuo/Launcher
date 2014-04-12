@@ -94,6 +94,21 @@ public class ApplicationsAdapter extends BaseAdapter
         mApps = apps;
     }
 
+    public void addAppItems(AppItem item) {
+        mApps.add(item);
+        this.notifyDataSetChanged();
+    }
+
+    public void deleteItems(String packageName) {
+        for (AppItem item : mApps) {
+            if (item.getResolveInfo().activityInfo.packageName.equals(packageName)) {
+                mApps.remove(item);
+                this.notifyDataSetChanged();
+                break;
+            }
+        }
+    }
+
     public Object getItem(int position)
     {
         // TODO Auto-generated method stub

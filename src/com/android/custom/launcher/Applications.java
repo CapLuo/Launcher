@@ -3,11 +3,15 @@ package com.android.custom.launcher;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -23,6 +27,18 @@ public class Applications extends BaseActivity implements OnItemClickListener, O
     private GridView mGridView;
     private ApplicationsAdapter mAdapter;
 
+    private BroadcastReceiver mAppControll = new BroadcastReceiver() {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.e("@@@@@", "" + intent.getAction());
+            if (intent.getAction().equals(Intent.ACTION_PACKAGE_REMOVED) || intent.getAction().equals(Intent.ACTION_PACKAGE_ADDED)) {
+                setAppItems();
+            }
+        }
+
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -33,10 +49,27 @@ public class Applications extends BaseActivity implements OnItemClickListener, O
         mGridView.setOnItemClickListener(this);
         mGridView.setOnItemLongClickListener(this);
         mAdapter = new ApplicationsAdapter(this, mGridView);
+
+        IntentFilter appFilter = new IntentFilter();
+        appFilter.addDataScheme("package");
+        appFilter.addAction(Intent.ACTION_PACKAGE_REMOVED);
+        appFilter.addAction(Intent.ACTION_PACKAGE_ADDED);
+        registerReceiver(mAppControll, appFilter);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
         setAppItems();
     }
 
-    private void setAppItems() {
+	@Override
+    protected void onDestroy() {
+        unregisterReceiver(mAppControll);
+        super.onDestroy();
+    }
+
+	private void setAppItems() {
         PackageManager mPackageManager = getPackageManager();
         List<PackageInfo> package_Infos = mPackageManager.getInstalledPackages(0);
 
@@ -81,9 +114,12 @@ public class Applications extends BaseActivity implements OnItemClickListener, O
 
     @Override
     public void onBackPressed() {
+        if (mAdapter.getWorkState()) {
+            super.onBackPressed();
+            return;
+        }
         mAdapter.changeWorkState(WorkState.NORMAL);
         mAdapter.notifyDataSetChanged();
-        super.onBackPressed();
     }
 
 }
