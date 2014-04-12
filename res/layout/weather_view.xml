@@ -1,0 +1,17 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_weather"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content" >
+
+        <ImageView
+            android:id="@+id/img_weather"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" 
+            android:background="@drawable/ic_launcher"/>
+        <TextView android:id="@+id/text_weather"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:text="23°"/>
+
+</FrameLayout>
