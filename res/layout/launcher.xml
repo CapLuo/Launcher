@@ -18,29 +18,31 @@
             android:layout_marginTop="25dp"
             android:layout_weight="3"
             android:orientation="horizontal" >
-            
+
             <View
-	            android:layout_width="wrap_content"
-	            android:layout_height="wrap_content"
-	            android:layout_weight="5" />
-            
- 			<com.android.custom.launcher.view.WeatherView
- 			    android:id="@+id/weather"
-	            android:layout_width="wrap_content"
-	            android:layout_height="wrap_content"
-	            android:layout_weight="1" />
- 			<com.android.custom.launcher.view.MusicView
- 			    android:id="@+id/music"
- 			    android:layout_width="wrap_content"
- 			    android:layout_height="wrap_content"
- 			    android:layout_weight="1"/>
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="5" />
+
+            <com.android.custom.launcher.view.WeatherView
+                android:id="@+id/weather"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
+            <com.android.custom.launcher.view.MusicView
+                android:id="@+id/music"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1" />
+
             <ImageView
                 android:id="@+id/img_apps"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:scaleType="fitXY"
-                android:background="@drawable/home_apps_default" />
+                android:background="@drawable/home_apps_default"
+                android:scaleType="fitXY" />
         </LinearLayout>
 
         <com.android.custom.launcher.view.PicsView
@@ -51,7 +53,7 @@
             android:layout_marginLeft="20dp"
             android:layout_marginRight="20dp"
             android:layout_marginTop="25dp"
-            android:layout_weight="4"/>
+            android:layout_weight="4" />
     </LinearLayout>
 
     <LinearLayout

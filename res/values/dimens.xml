@@ -2,5 +2,6 @@
 
     <dimen name="text_size_apps_title">20sp</dimen>
     <dimen name="text_size_apps_item_name">13sp</dimen>
+    <dimen name="home_music_view_text_size">13sp</dimen>
 
 </resources>

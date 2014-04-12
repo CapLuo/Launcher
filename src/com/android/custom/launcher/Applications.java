@@ -31,8 +31,8 @@ public class Applications extends BaseActivity implements OnItemClickListener, O
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            Log.e("@@@@@", "" + intent.getAction());
-            if (intent.getAction().equals(Intent.ACTION_PACKAGE_REMOVED) || intent.getAction().equals(Intent.ACTION_PACKAGE_ADDED)) {
+            if (intent.getAction().equals(Intent.ACTION_PACKAGE_REMOVED) ||
+                    intent.getAction().equals(Intent.ACTION_PACKAGE_ADDED)) {
                 setAppItems();
             }
         }
