@@ -1,5 +1,10 @@
 package com.android.custom.launcher;
 
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.DocumentHelper;
+import org.dom4j.Element;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -9,16 +14,17 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
 
 import com.android.custom.launcher.services.LauncherService;
+import com.android.custom.launcher.util.HttpHelper;
 import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.view.MusicView;
 import com.android.custom.launcher.view.PicsView;
 import com.android.custom.launcher.view.WeatherView;
+import com.example.setting.util.StoreUtil;
 
 public class Launcher extends BaseActivity {
 
@@ -51,13 +57,13 @@ public class Launcher extends BaseActivity {
         public void onServiceConnected(ComponentName name, IBinder binder) {
             mService = ((LauncherService.LocalBinder) binder).getService();
             mCurrentMusic = mService.getPlayMusic(mService.getPosition());
-            Log.e("@@@@", "1@@@" + (mCurrentMusic == null));
         	mMusic.isFirstViewMode(mCurrentMusic == null);
         	mMusic.setCurrentMusic(mCurrentMusic);
         }
     };
 
 	private PicsView picsView;
+	private WeatherView mWeatherView;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -65,9 +71,19 @@ public class Launcher extends BaseActivity {
 
         setContentView(R.layout.launcher);
 
-        WeatherView weatherView = (WeatherView)findViewById(R.id.weather);
-        weatherView.setWeather(18);
-        weatherView.setTemperature(22);
+        mWeatherView = (WeatherView)findViewById(R.id.weather);
+        int code = StoreUtil.loadCode(this);
+        int temp = StoreUtil.loadTemp(this);
+        if (code != -100) {
+            mWeatherView.setWeather(code);
+        } else {
+        	mWeatherView.setVisibility(View.GONE);
+        }
+        if (temp != -100) {
+        	mWeatherView.setTemperature(temp);
+        } else {
+            mWeatherView.setVisibility(View.GONE);
+        }
 
         ImageView imageView = (ImageView)findViewById(R.id.img_apps);
         imageView.setOnClickListener(new View.OnClickListener() {
@@ -118,12 +134,12 @@ public class Launcher extends BaseActivity {
 		});
 
         startMusicService();
+        getWeather();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        Log.e("@@@@", "@@@" + (mService == null));
         if (mService != null) {
         	mCurrentMusic = mService.getPlayMusic(mService.getPosition());
         	mMusic.isFirstViewMode(mCurrentMusic == null);
@@ -144,7 +160,6 @@ public class Launcher extends BaseActivity {
 	}
 
 	private void startMusicService() {
-		Log.e("@@@@", "@@@2");
 		mMessenger = new Messenger(mHandler);
         Intent intent = new Intent(this, LauncherService.class);
         //intent.setAction(LauncherService.ACTION);
@@ -210,4 +225,63 @@ public class Launcher extends BaseActivity {
         return super.onKeyDown(keyCode, event);
     }
 
+    private void getWeather() {
+        new Thread(new Runnable() {
+			@Override
+			public void run() {
+				String city = HttpHelper.getCity();
+				String woeid = HttpHelper.getWoeid(city);
+				woeid = xmlToString(woeid);
+				woeid = woeid.substring(woeid.lastIndexOf("woeid") + 6, woeid.lastIndexOf("woeid") + 14);
+				String wether = HttpHelper.getWeather(woeid);
+				xmlToStrings(wether);
+			}
+		}).start();
+    }
+
+    private String xmlToString(String woeid) {
+        Document doc = null;
+        try {
+			doc = DocumentHelper.parseText(woeid);
+			Element root = doc.getRootElement();
+			Element iters = root.element("s");
+			return iters.attributeValue("d");
+		} catch (DocumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        return null;
+    }
+
+    private void xmlToStrings(String woeid) {
+        Document doc = null;
+        try {
+			doc = DocumentHelper.parseText(woeid);
+			Element root = doc.getRootElement();
+			Element cancel = root.element("channel");
+			Element item = cancel.element("item");
+			Element iters = item.element("condition");
+			final int code = Integer.parseInt(iters.attributeValue("code"));
+			final int temp = Integer.parseInt(iters.attributeValue("temp"));
+			runOnUiThread(new Runnable() {
+
+				@Override
+				public void run() {
+					mWeatherView.setWeather(code);
+					mWeatherView.setTemperature(temp);
+					StoreUtil.saveCodeAndTemp(Launcher.this, code, temp);
+					mHandler.postDelayed(mRefreshWeather, 60 * 1000 * 60);
+				}
+			});
+		} catch (DocumentException e) {
+			e.printStackTrace();
+		}
+    }
+    private Runnable mRefreshWeather = new Runnable() {
+		
+		@Override
+		public void run() {
+			getWeather();
+		}
+	};
 }
