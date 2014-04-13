@@ -71,7 +71,7 @@ public class MusicView extends LinearLayout implements OnClickListener {
         super(context, attrs);
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.MusicView);
         String mode = a.getString(R.styleable.MusicView_viewMode);
-        if (mode.equals("home")) {
+        if ("home".equals(mode)) {
             LayoutInflater.from(context).inflate(R.layout.music_view, this, true);
             mMode = ViewMode.HOME;
         } else {
@@ -85,7 +85,7 @@ public class MusicView extends LinearLayout implements OnClickListener {
         super(context, attrs, defStyle);
         TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.MusicView);
         String mode = a.getString(R.styleable.MusicView_viewMode);
-        if (mode.equals("home")) {
+        if ("home".equals(mode)) {
             LayoutInflater.from(context).inflate(R.layout.music_view, this, true);
             mMode = ViewMode.HOME;
         } else {
@@ -248,7 +248,9 @@ public class MusicView extends LinearLayout implements OnClickListener {
     }
 
     public void isFirstViewMode(boolean mode) {
-    	Log.e("@@@@", "" + mode);
+    	if (mMode == ViewMode.FILE) {
+    		return;
+    	}
     	if (!mode) {
     		findViewById(R.id.music_view).setVisibility(View.VISIBLE);
     		findViewById(R.id.music_view_default).setVisibility(View.GONE);

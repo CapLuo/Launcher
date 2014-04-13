@@ -3,8 +3,7 @@ package com.android.custom.launcher.util;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
-import com.android.custom.launcher.util.BitmapUtils.ImageHolder;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import android.content.ContentResolver;
 import android.content.Context;
@@ -14,13 +13,15 @@ import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.provider.MediaStore;
-import android.provider.MediaStore.MediaColumns;
 import android.provider.MediaStore.Audio.AudioColumns;
+import android.provider.MediaStore.MediaColumns;
+
+import com.android.custom.launcher.util.BitmapUtils.ImageHolder;
 
 public class FilesUtil {
 
-	public static ArrayList<Music> getDataMusics(Context context){
-		ArrayList<Music> list = new ArrayList<Music>();
+	public static List<Music> getDataMusics(Context context){
+		List<Music> list = new CopyOnWriteArrayList<Music>();
 		ContentResolver cr = context.getContentResolver();
 		if(cr != null){
 			Cursor cursor = cr.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, 

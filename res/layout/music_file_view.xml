@@ -1,55 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="100dp"
     android:background="@drawable/music_play_background"
     android:orientation="horizontal" >
 
     <ImageButton
         android:id="@+id/music_mode"
-        android:layout_width="0dip"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:layout_marginLeft="30dp"
+        android:layout_marginRight="10dp"
         android:background="@drawable/drawable_music_mode_all"
         android:contentDescription="@drawable/drawable_music_mode_all" />
 
     <ImageButton
         android:id="@+id/music_prev"
-        android:layout_width="0dip"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:layout_centerVertical="true"
+        android:layout_margin="10dp"
+        android:layout_toRightOf="@id/music_mode"
         android:background="@drawable/drawable_file_music_prev"
         android:contentDescription="@drawable/drawable_file_music_prev" />
 
     <ImageButton
         android:id="@+id/music_play"
-        android:layout_width="0dip"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:layout_centerVertical="true"
+        android:layout_margin="10dp"
+        android:layout_toRightOf="@id/music_prev"
         android:background="@drawable/drawable_file_music_play"
         android:contentDescription="@drawable/drawable_file_music_play" />
 
     <ImageButton
         android:id="@+id/music_next"
-        android:layout_width="0dip"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:layout_centerVertical="true"
+        android:layout_margin="10dp"
+        android:layout_toRightOf="@id/music_play"
         android:background="@drawable/drawable_file_music_next"
         android:contentDescription="@drawable/drawable_file_music_next" />
 
     <ImageView
         android:id="@+id/music_image"
-        android:layout_width="0dip"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_margin="10dp"
+        android:layout_toRightOf="@id/music_next"
         android:contentDescription="@drawable/music_play_picture_default"
         android:src="@drawable/music_play_picture_default" />
 
     <LinearLayout
-        android:layout_width="0dip"
-        android:layout_height="match_parent"
-        android:layout_weight="10"
-        android:gravity="center_vertical"
+        android:id="@+id/layout_seek_bar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_margin="10dp"
+        android:layout_toRightOf="@id/music_image"
         android:orientation="vertical" >
 
         <LinearLayout
@@ -62,6 +76,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="singer"
+                android:textColor="@android:color/white"
                 android:textSize="@dimen/home_music_view_text_size"
                 android:textStyle="bold" />
 
@@ -69,44 +84,56 @@
                 android:id="@+id/music_singer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:ellipsize="marquee"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:marqueeRepeatLimit="marquee_forever"
                 android:text="- name"
+                android:textColor="@android:color/white"
                 android:textSize="@dimen/home_music_view_text_size" />
         </LinearLayout>
 
         <SeekBar
             android:id="@+id/music_seekbar"
             style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
+            android:layout_width="500dp"
             android:layout_height="wrap_content"
             android:clickable="false"
             android:focusable="false"
-            android:thumb="@drawable/file_music_progress_drag" />
+            />
     </LinearLayout>
 
     <TextView
         android:id="@+id/music_time"
-        android:layout_width="0dip"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:layout_alignBottom="@id/layout_seek_bar"
+        android:layout_margin="10dp"
+        android:layout_toRightOf="@id/layout_seek_bar"
         android:text="0:0"
+        android:textColor="@android:color/white"
         android:textSize="@dimen/home_music_view_text_size" />
 
     <ImageButton
         android:id="@+id/music_volume"
-        android:layout_width="0dip"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
+        android:layout_alignBottom="@id/layout_seek_bar"
+        android:layout_margin="10dp"
+        android:layout_toRightOf="@id/music_time"
         android:background="@drawable/drawable_file_music_volume"
         android:contentDescription="@drawable/drawable_file_music_volume" />
 
     <SeekBar
         android:id="@+id/music_volume_seekbar"
         style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="0dip"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="2"
+        android:layout_alignBottom="@id/layout_seek_bar"
+        android:layout_margin="10dp"
+        android:layout_toRightOf="@id/music_volume"
         android:clickable="false"
         android:focusable="false"
         android:thumb="@drawable/file_music_voice_progress_drag" />
 
-</LinearLayout>
+</RelativeLayout>

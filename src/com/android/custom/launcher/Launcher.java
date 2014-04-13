@@ -108,7 +108,6 @@ public class Launcher extends BaseActivity {
 				return Launcher.this.getPosition();
 			}
 
-			@Override
 			public boolean isPlaying() {
 				if (mService != null) {
 					return mService.isPlaying();

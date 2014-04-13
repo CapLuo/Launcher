@@ -24,7 +24,6 @@ import android.widget.LinearLayout;
 
 import com.android.custom.launcher.R;
 import com.example.setting.ItemListActivity;
-import com.example.setting.adapter.MyMedia;
 import com.example.setting.util.StoreUtil;
 
 public class PicsView extends LinearLayout {
@@ -211,30 +210,6 @@ public class PicsView extends LinearLayout {
 			cursor = context.getContentResolver().query(uri, columns,
 					MediaStore.Images.Media.DATA + " LIKE ?",
 					new String[] { rootPath + "%" }, null);
-
-			// while (cursor.moveToNext()) {
-			// // 循环读取第一列,即文件路径,0列是标题
-			// String id = cursor.getString(0);
-			// String name = cursor.getString(1);
-			// String abPath = cursor.getString(2);
-			// String mimeType = cursor.getString(3);
-			// MyMedia myMedia = new MyMedia();
-			// Bitmap bitmap = getImageThumbnail(abPath);
-			// if (bitmap != null) {
-			// BitmapDrawable bd = new BitmapDrawable(bitmap);
-			// myMedia.setImage(bd);
-			// myMedia.setMediaType(MyMedia.TYPE_GALLERY);
-			// } else {
-			// myMedia.setMediaType(MyMedia.TYPE_GALLERY_N);
-			// myMedia.setImage(R.drawable.otherfiles_file);
-			// }
-			//
-			// myMedia.setId(id);
-			// myMedia.setName(name);
-			// myMedia.setPath(abPath);
-			// myMedia.setMimeType(mimeType);
-			// listFile.add(myMedia);
-			// }
 		} catch (SQLiteException e) {
 			e.printStackTrace();
 		}
@@ -297,15 +272,4 @@ public class PicsView extends LinearLayout {
 				ThumbnailUtils.OPTIONS_RECYCLE_INPUT);
 		return bitmap;
 	}
-
-	// private void changeActivity() {
-	// Intent intent = new Intent(Intent.ACTION_MAIN);
-	// intent.setFlags(1);
-	// Log.e("@@@@##", "" + ((1 & Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) !=
-	// Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT));
-	// intent.setClassName("com.android.launcher",
-	// "com.android.launcher2.Launcher");
-	// this.startActivity(intent);
-	//
-	// }
 }

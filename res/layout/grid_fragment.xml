@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" xmlns:app="http://schemas.android.com/apk/res/com.android.custom.launcher">
+
+    <!--
+    The PullToRefreshGridView replaces a standard GridView widget.
+
+    <com.handmark.pulltorefresh.library.PullToRefreshGridView
+    xmlns:ptr="http://schemas.android.com/apk/res/com.example.setting"
+           ptr:ptrMode="both"
+    -->
+
+    <RelativeLayout
+        android:id="@+id/layout_grid_fragment_main"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" >
+
+        <com.example.setting.view.GridTitleView
+            android:id="@+id/grid_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_marginLeft="10dp" />
+
+        <GridView
+            android:id="@+id/grid"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_below="@id/grid_title"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginTop="20dp"
+            android:gravity="center_vertical"
+            android:horizontalSpacing="12dp"
+            android:numColumns="6"
+            android:stretchMode="columnWidth"
+            android:verticalSpacing="12dp" />
+        <TextView
+            android:id="@+id/tv_loading"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:background="#ffffff"
+            android:gravity="center"
+            android:text="loading"
+            android:textSize="20sp"
+            android:visibility="gone" />
+    </RelativeLayout>
+
+    <LinearLayout
+        android:id="@+id/layout_grid_fragment_empty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical" >
+
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/foder_empty" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="20dp"
+            android:textSize="18sp"
+            android:text="0 files in total" />
+    </LinearLayout>
+
+</FrameLayout>

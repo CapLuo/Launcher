@@ -1,0 +1,65 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content" >
+
+    <TextView
+        android:id="@+id/text_title_total"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="10dp"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/text_title_delete"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginRight="10dp"
+        android:focusable="true"
+        android:layout_toLeftOf="@+id/text_title_cancle"
+        android:background="@drawable/text_selector"
+        android:textSize="18sp" />
+
+    <TextView
+        android:id="@+id/text_title_cancle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginRight="10dp"
+        android:layout_alignParentRight="true"
+        android:focusable="true"
+        android:background="@drawable/text_selector"
+        android:textSize="18sp" />
+
+    <LinearLayout 
+        android:id="@+id/layout_title_change"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toLeftOf="@+id/btn_title_delete"
+        android:layout_marginBottom="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/text_selector">
+	    <ImageButton
+	        android:id="@+id/btn_title_change"
+	        android:layout_margin="1dp"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:focusable="true"
+	        android:background="@drawable/change_btn_list_selector"/>
+    </LinearLayout>
+    
+    <ImageButton
+        android:id="@+id/btn_title_delete"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginTop="10dp"
+        android:focusable="true"
+        android:background="@drawable/delete_btn_selector"
+        />
+</RelativeLayout>

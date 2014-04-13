@@ -1,0 +1,38 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:baselineAligned="false"
+    android:divider="?android:attr/dividerHorizontal"
+    android:showDividers="middle"
+    tools:context=".ItemListActivity" >
+
+    <!--
+    This layout is a two-pane layout for the Items
+    master/detail flow. See res/values-large/refs.xml and
+    res/values-sw600dp/refs.xml for an example of layout aliases
+    that replace the single-pane version of the layout with
+    this two-pane version.
+
+    For more on layout aliases, see:
+    http://developer.android.com/training/multiscreen/screensizes.html#TaskUseAliasFilters
+    -->
+
+    <com.example.setting.view.UsbTitleView
+        android:id="@+id/usb_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <FrameLayout
+        android:id="@+id/item_detail_container"
+        android:layout_below="@id/usb_title"
+        android:layout_above="@+id/music_big"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+    <com.android.custom.launcher.view.MusicView 
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:id="@+id/music_big"/>
+
+</RelativeLayout>
