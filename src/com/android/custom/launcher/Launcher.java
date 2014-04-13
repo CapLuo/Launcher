@@ -5,7 +5,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
@@ -18,7 +21,23 @@ import com.android.custom.launcher.view.WeatherView;
 
 public class Launcher extends BaseActivity {
 
+	private Handler mHandler = new Handler() {
+		public void handleMessage(Message msg) {
+			if (msg.what == LauncherService.MUSIC_COMPLETE_ACTION) {
+				isRefreshMusicView = false;
+				int position = msg.getData().getInt("position", -1);
+				if (position == -1) {
+					position = mService.getPosition() + 1;
+				}
+				mMusic.setCurrentMusic(mService.getPlayMusic(position));
+				MusicPlay(position);
+			}
+        }
+	};
+	private boolean isRefreshMusicView = true;
+	private Messenger mMessenger = null;
     private MusicView mMusic;
+    private Music mCurrentMusic;
 
     private LauncherService mService;
     private ServiceConnection mConn = new ServiceConnection() {
@@ -28,8 +47,27 @@ public class Launcher extends BaseActivity {
 
         public void onServiceConnected(ComponentName name, IBinder binder) {
             mService = ((LauncherService.LocalBinder) binder).getService();
+            mCurrentMusic = mService.getPlayMusic(mService.getPosition());
+        	mMusic.isFirstViewMode(mCurrentMusic == null);
+        	mMusic.setCurrentMusic(mCurrentMusic);
         }
     };
+
+    private Runnable mRefreshMusicView = new Runnable() {
+
+    	public void run() {
+    		while (isRefreshMusicView) {
+    			mMusic.refreshSeekBar(mService.getStartTime());
+    			try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+    		}
+		}
+	};
+	
+	private PicsView picsView;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -50,47 +88,76 @@ public class Launcher extends BaseActivity {
             }
         });
 
-        PicsView picsView = (PicsView)findViewById(R.id.pics);
+        picsView = (PicsView)findViewById(R.id.pics);
+        picsView.requestFocus();
 
-//		mMusicList = FilesUtil.getDataMusics(this);
-//		mMusic = (MusicView) findViewById(R.id.music);
-//		mMusic.setOnMusicControl(new MusicView.MusicControl() {
-//
-//			public void play(int position) {
-//			    MusicPlay(mMusicList.get(position));
-//			}
-//
-//			public void pause() {
-//				MusicPause();
-//			}
-//
-//			public void stop() {
-//				MusicStop();
-//			}
-//
-//			public int getTime() {
-//				return getStartTime();
-//			}
-//			
-//		});
+		mMusic = (MusicView) findViewById(R.id.music);
+		mMusic.setOnMusicControl(new MusicView.MusicControl() {
+
+			public void play(int position) {
+				MusicPlay(position);
+			}
+
+			public void pause() {
+				MusicPause();
+			}
+
+			public void stop() {
+				MusicStop();
+			}
+
+			public int getTime() {
+				return getStartTime();
+			}
+
+			public Music getCurrentMusic(int position) {
+				return getMusic(position);
+			}
+
+			public int getPosition() {
+				return Launcher.this.getPosition();
+			}
+			
+		});
+
+        startMusicService();
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        startMusicService();
+        if (mService != null) {
+        	mCurrentMusic = mService.getPlayMusic(mService.getPosition());
+        	mMusic.isFirstViewMode(mCurrentMusic == null);
+        	mMusic.setCurrentMusic(mCurrentMusic);
+        }
     }
 
-    private void startMusicService() {
+    @Override
+	protected void onStart() {
+		super.onStart();
+		picsView.updatePath();
+	}
+
+	@Override
+	protected void onStop() {
+		picsView.savePath();
+		super.onStop();
+	}
+
+	private void startMusicService() {
+		mMessenger = new Messenger(mHandler);
         Intent intent = new Intent(this, LauncherService.class);
         intent.setAction(LauncherService.ACTION);
+        intent.putExtra("Messenger", mMessenger);
         this.bindService(intent, mConn, Context.BIND_AUTO_CREATE);
     }
 
-    private void MusicPlay(Music music) {
-//		if (mService != null) {
-//			mService.play(music.getUrl());
-//		}
+    private void MusicPlay(int position) {
+		if (mService != null) {
+			isRefreshMusicView = true;
+			mService.play(position);
+		}
     }
 
     private void MusicStop() {
@@ -101,6 +168,7 @@ public class Launcher extends BaseActivity {
 
     private void MusicPause() {
         if (mService != null) {
+        	isRefreshMusicView = false;
             mService.pause();
         }
     }
@@ -108,6 +176,20 @@ public class Launcher extends BaseActivity {
     private int getStartTime() {
         if (mService != null) {
             return mService.getStartTime();
+        }
+        return 0;
+    }
+
+    private Music getMusic(int position) {
+    	if (mService != null) {
+            return mService.getPlayMusic(position);
+        }
+        return null;
+    }
+
+    private int getPosition() {
+    	if (mService != null) {
+            return mService.getPosition();
         }
         return 0;
     }

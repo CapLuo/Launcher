@@ -9,6 +9,8 @@ import com.anddroid.custom.launcher.util.BitmapUtils.ImageHolder;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.provider.MediaStore;
@@ -41,6 +43,8 @@ public class FilesUtil {
 				}
 				String album = cursor.getString(cursor
 						.getColumnIndex(AudioColumns.ALBUM));
+				String albumId = cursor.getString(cursor
+						.getColumnIndexOrThrow(AudioColumns.ALBUM_ID));
 				long size = cursor.getLong(cursor
 						.getColumnIndex(MediaColumns.SIZE));
 				long time = cursor.getLong(cursor
@@ -55,6 +59,7 @@ public class FilesUtil {
 				m.setTime(time);
 				m.setTitle(title);
 				m.setAlbum(album);
+				m.setAlbumID(albumId);
 				m.setUrl(url);
 				list.add(m);
 			}
@@ -131,5 +136,25 @@ public class FilesUtil {
 		System.out.println("data..........ok"+s);
 	}
 
+	public  static Bitmap getAlbumArt(Context context, String album_id) {
+		String mUriAlbums = "content://media/external/audio/albums";
+		String[] projection = new String[] { "album_art" };
+		Cursor cur = context.getContentResolver().query(
+				Uri.parse(mUriAlbums + "/" + album_id), projection, null, null,
+				null);
+		String album_art = null;
+		if (cur.getCount() > 0 && cur.getColumnCount() > 0) {
+			cur.moveToNext();
+			album_art = cur.getString(0);
+		}
+		cur.close();
+		cur = null;
+
+		if (album_art == null)
+			return null;
+
+		Bitmap bm = BitmapFactory.decodeFile(album_art);
+		return bm;
+	}
 }
 

@@ -7,6 +7,7 @@ public class Music {
 	private String name;//歌名
 	private String singer;//歌手
 	private String album;//专辑
+	private String albumId;
 	private String url;//路径
 	private long size;//大小
 	private long time;//时间
@@ -34,6 +35,12 @@ public class Music {
 	}
 	public void setAlbum(String album) {
 		this.album = album;
+	}
+	public String getAlbumID() {
+		return albumId;
+	}
+	public void setAlbumID(String albumID) {
+		this.albumId = albumID;
 	}
 	public String getUrl() {
 		return url;

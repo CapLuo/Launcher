@@ -10,20 +10,27 @@ import android.app.Service;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Binder;
+import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
+import android.os.RemoteException;
 
 public class LauncherService extends Service {
 
     public static final String ACTION = "com.android.launcher.music";
+    public static final int MUSIC_COMPLETE_ACTION = 1;
 
     private ArrayList<Music> mMusics = new ArrayList<Music>();
-    private int mCurPosition = -1, mCount = 0;
+    private int mCurPosition = 0, mCount = 0;
     private MediaPlayer mPlayer;
+    private Messenger mMessenger = null;
 
     @Override
     public IBinder onBind(Intent intent) {
         mMusics = FilesUtil.getDataMusics(this);
         mCount = mMusics.size();
+        mMessenger = (Messenger) intent.getExtras().get("Messenger");
         return new LocalBinder();
     }
 
@@ -38,7 +45,7 @@ public class LauncherService extends Service {
             mPlayer.start();
         } else {
             stop();
-            mCurPosition = position;
+            mCurPosition = (position + mMusics.size()) % mMusics.size();
             try {
                 mPlayer = new MediaPlayer();
 
@@ -54,13 +61,29 @@ public class LauncherService extends Service {
             mPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
 
                 public void onCompletion(MediaPlayer mp) {
-                    mPlayer.stop();
+                    stop();
                     int position = (mCurPosition + 1) % mCount;
-                    play(position);
+                	sendMusicCompletionMSG(position);
                 }
             });
             mPlayer.start();
         }
+    }
+
+    private void sendMusicCompletionMSG(int position) {
+    	if (mMessenger != null) {
+    		Message msg = Message.obtain();
+        	msg.what = MUSIC_COMPLETE_ACTION;
+        	Bundle b = new Bundle();
+        	b.putInt("position", position);
+        	msg.setData(b);
+        	try {
+				mMessenger.send(msg);
+			} catch (RemoteException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
     }
 
     public void pause() {
@@ -84,8 +107,11 @@ public class LauncherService extends Service {
         return 0;
     }
 
-    public Music getPlayMusic() {
-        return mMusics.get(mCurPosition);
+    public Music getPlayMusic(int position) {
+    	if (mMusics.size() <= 0 || mMusics.size() <= position) {
+    		return null;
+    	}
+        return mMusics.get(position);
     }
 
     public boolean isPlaying() {
@@ -94,6 +120,10 @@ public class LauncherService extends Service {
         } else {
             return false;
         }
+    }
+
+    public int getPosition() {
+    	return mCurPosition;
     }
 
 }
