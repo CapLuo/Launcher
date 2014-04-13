@@ -60,8 +60,9 @@
                     style="?android:attr/progressBarStyleHorizontal"
                     android:layout_width="240dp"
                     android:layout_height="wrap_content"
-                    android:thumb="@drawable/drawable_music_seekbar_thumb"
-                    android:focusable="false" />
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:thumb="@drawable/drawable_music_seekbar_thumb" />
 
                 <TextView
                     android:id="@+id/music_time"
@@ -129,8 +130,9 @@
                         android:layout_width="80dp"
                         android:layout_height="wrap_content"
                         android:layout_marginRight="15dp"
-                        android:thumb="@drawable/drawable_music_volume_seekbar_thumb"
-                        android:focusable="false" />
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:thumb="@drawable/drawable_music_volume_seekbar_thumb" />
 
                     <ImageButton
                         android:id="@+id/music_list"

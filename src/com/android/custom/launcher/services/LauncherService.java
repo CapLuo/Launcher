@@ -3,8 +3,8 @@ package com.android.custom.launcher.services;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import com.anddroid.custom.launcher.util.FilesUtil;
-import com.anddroid.custom.launcher.util.Music;
+import com.android.custom.launcher.util.FilesUtil;
+import com.android.custom.launcher.util.Music;
 
 import android.app.Service;
 import android.content.Intent;
@@ -15,19 +15,47 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
 import android.os.RemoteException;
+import android.util.Log;
 
 public class LauncherService extends Service {
 
+    public enum PlayMode {
+        RANDOM, REPEAT, ALL;
+    }
+
     public static final String ACTION = "com.android.launcher.music";
     public static final int MUSIC_COMPLETE_ACTION = 1;
+    public static final int MUSIC_REFRESH_ACTION = 2;
 
     private ArrayList<Music> mMusics = new ArrayList<Music>();
-    private int mCurPosition = 0, mCount = 0;
+    private int mCurPosition = -1, mCount = 0;
     private MediaPlayer mPlayer;
     private Messenger mMessenger = null;
+    private PlayMode mMode = PlayMode.ALL;
+
+    private boolean isRefreshMusicView = true;
+    private Runnable mRefreshMusicView = new Runnable() {
+
+    	public void run() {
+    		while (isRefreshMusicView) {
+    			Message msg = Message.obtain();
+    			msg.what = MUSIC_REFRESH_ACTION;
+    			try {
+        			mMessenger.send(msg);
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				} catch (RemoteException e) {
+					e.printStackTrace();
+				}
+    		}
+		}
+	};
+	
 
     @Override
     public IBinder onBind(Intent intent) {
+    	Log.e("@@@@", "3@@@");
         mMusics = FilesUtil.getDataMusics(this);
         mCount = mMusics.size();
         mMessenger = (Messenger) intent.getExtras().get("Messenger");
@@ -50,6 +78,7 @@ public class LauncherService extends Service {
                 mPlayer = new MediaPlayer();
 
                 mPlayer.setDataSource(mMusics.get(mCurPosition).getUrl());
+                Log.e("@@@@", "" + mMusics.get(mCurPosition).getUrl());
                 mPlayer.prepare();
             } catch (IllegalArgumentException e) {
                 e.printStackTrace();
@@ -62,11 +91,21 @@ public class LauncherService extends Service {
 
                 public void onCompletion(MediaPlayer mp) {
                     stop();
-                    int position = (mCurPosition + 1) % mCount;
+                    int position = 0;
+                    if (mMode == PlayMode.ALL) {
+                        position = (mCurPosition + 1) % mCount;
+                    } else if (mMode == PlayMode.RANDOM) {
+                        java.util.Random r = new java.util.Random();
+                        position = (Math.abs(r.nextInt()) % mCount);
+                    } else {
+                        position = mCurPosition;
+                    }
                 	sendMusicCompletionMSG(position);
                 }
             });
             mPlayer.start();
+            isRefreshMusicView = true;
+            new Thread(mRefreshMusicView).start();
         }
     }
 
@@ -93,6 +132,7 @@ public class LauncherService extends Service {
     }
 
     public void stop() {
+        isRefreshMusicView = false;
         if (mPlayer != null) {
             mPlayer.stop();
             mPlayer.release();
@@ -103,6 +143,13 @@ public class LauncherService extends Service {
     public int getStartTime() {
         if (mPlayer != null) {
             return mPlayer.getCurrentPosition();
+        }
+        return 0;
+    }
+
+    public int getMaxTime() {
+        if (mPlayer != null) {
+            return mPlayer.getDuration();
         }
         return 0;
     }
@@ -123,6 +170,9 @@ public class LauncherService extends Service {
     }
 
     public int getPosition() {
+    	if (mCurPosition < 0) {
+    		return 0;
+    	}
     	return mCurPosition;
     }
 

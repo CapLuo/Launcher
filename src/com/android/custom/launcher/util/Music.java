@@ -1,4 +1,4 @@
-package com.anddroid.custom.launcher.util;
+package com.android.custom.launcher.util;
 
 public class Music {
 

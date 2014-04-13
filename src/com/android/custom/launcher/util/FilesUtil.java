@@ -1,10 +1,10 @@
-package com.anddroid.custom.launcher.util;
+package com.android.custom.launcher.util;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.anddroid.custom.launcher.util.BitmapUtils.ImageHolder;
+import com.android.custom.launcher.util.BitmapUtils.ImageHolder;
 
 import android.content.ContentResolver;
 import android.content.Context;

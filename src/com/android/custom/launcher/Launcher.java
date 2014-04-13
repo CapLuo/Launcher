@@ -9,12 +9,13 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
 
-import com.anddroid.custom.launcher.util.Music;
 import com.android.custom.launcher.services.LauncherService;
+import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.view.MusicView;
 import com.android.custom.launcher.view.PicsView;
 import com.android.custom.launcher.view.WeatherView;
@@ -24,7 +25,6 @@ public class Launcher extends BaseActivity {
 	private Handler mHandler = new Handler() {
 		public void handleMessage(Message msg) {
 			if (msg.what == LauncherService.MUSIC_COMPLETE_ACTION) {
-				isRefreshMusicView = false;
 				int position = msg.getData().getInt("position", -1);
 				if (position == -1) {
 					position = mService.getPosition() + 1;
@@ -32,9 +32,12 @@ public class Launcher extends BaseActivity {
 				mMusic.setCurrentMusic(mService.getPlayMusic(position));
 				MusicPlay(position);
 			}
+			if (msg.what == LauncherService.MUSIC_REFRESH_ACTION) {
+				mMusic.refreshSeekBar(getStartTime(), getMaxTime());
+			}
         }
 	};
-	private boolean isRefreshMusicView = true;
+
 	private Messenger mMessenger = null;
     private MusicView mMusic;
     private Music mCurrentMusic;
@@ -48,25 +51,12 @@ public class Launcher extends BaseActivity {
         public void onServiceConnected(ComponentName name, IBinder binder) {
             mService = ((LauncherService.LocalBinder) binder).getService();
             mCurrentMusic = mService.getPlayMusic(mService.getPosition());
+            Log.e("@@@@", "1@@@" + (mCurrentMusic == null));
         	mMusic.isFirstViewMode(mCurrentMusic == null);
         	mMusic.setCurrentMusic(mCurrentMusic);
         }
     };
 
-    private Runnable mRefreshMusicView = new Runnable() {
-
-    	public void run() {
-    		while (isRefreshMusicView) {
-    			mMusic.refreshSeekBar(mService.getStartTime());
-    			try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
-    		}
-		}
-	};
-	
 	private PicsView picsView;
 
     @Override
@@ -117,7 +107,15 @@ public class Launcher extends BaseActivity {
 			public int getPosition() {
 				return Launcher.this.getPosition();
 			}
-			
+
+			@Override
+			public boolean isPlaying() {
+				if (mService != null) {
+					return mService.isPlaying();
+				}
+				return false;
+			}
+
 		});
 
         startMusicService();
@@ -126,6 +124,7 @@ public class Launcher extends BaseActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        Log.e("@@@@", "@@@" + (mService == null));
         if (mService != null) {
         	mCurrentMusic = mService.getPlayMusic(mService.getPosition());
         	mMusic.isFirstViewMode(mCurrentMusic == null);
@@ -146,16 +145,16 @@ public class Launcher extends BaseActivity {
 	}
 
 	private void startMusicService() {
+		Log.e("@@@@", "@@@2");
 		mMessenger = new Messenger(mHandler);
         Intent intent = new Intent(this, LauncherService.class);
-        intent.setAction(LauncherService.ACTION);
+        //intent.setAction(LauncherService.ACTION);
         intent.putExtra("Messenger", mMessenger);
         this.bindService(intent, mConn, Context.BIND_AUTO_CREATE);
     }
 
     private void MusicPlay(int position) {
 		if (mService != null) {
-			isRefreshMusicView = true;
 			mService.play(position);
 		}
     }
@@ -168,7 +167,6 @@ public class Launcher extends BaseActivity {
 
     private void MusicPause() {
         if (mService != null) {
-        	isRefreshMusicView = false;
             mService.pause();
         }
     }
@@ -176,6 +174,13 @@ public class Launcher extends BaseActivity {
     private int getStartTime() {
         if (mService != null) {
             return mService.getStartTime();
+        }
+        return 0;
+    }
+
+    private int getMaxTime() {
+        if (mService != null) {
+            return mService.getMaxTime();
         }
         return 0;
     }

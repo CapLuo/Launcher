@@ -2,9 +2,11 @@ package com.android.custom.launcher.view;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.media.AudioManager;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,22 +17,25 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
-import com.anddroid.custom.launcher.util.FilesUtil;
-import com.anddroid.custom.launcher.util.Music;
-import com.anddroid.custom.launcher.util.MusicUtil;
+import com.android.custom.launcher.util.FilesUtil;
+import com.android.custom.launcher.util.Music;
+import com.android.custom.launcher.util.MusicUtil;
 import com.android.custom.launcher.R;
 import com.example.setting.ItemListActivity;
 
 public class MusicView extends LinearLayout implements OnClickListener {
 
+    public enum ViewMode {
+        HOME, FILE;
+    }
     private TextView mMusicName, mSinger, mTime;
     private ImageView mDrawable;
-    private ImageButton mPlay, mNext, mPrev, mList, mVolume;
+    private ImageButton mPlay, mNext, mPrev, mList, mVolume, mPlayMode;
     private SeekBar mVolumeBar, mPlayBar;
     private boolean mSoundEnabled = true;
-    private boolean isPlaying = false;
     private int volume;
     private Music mCurrentMusic = null;
+    private ViewMode mMode = ViewMode.HOME;
 
     private MusicControl mControl = new MusicControl() {
         public void stop() {}
@@ -39,6 +44,7 @@ public class MusicView extends LinearLayout implements OnClickListener {
         public int getTime() { return 0;}
 		public Music getCurrentMusic(int position) { return null;}
 		public int getPosition() { return 0;}
+		public boolean isPlaying() {return false;}
     };
 
     public void setOnMusicControl(MusicControl c) {
@@ -52,23 +58,40 @@ public class MusicView extends LinearLayout implements OnClickListener {
         public int getTime();
         public int getPosition();
         public Music getCurrentMusic(int position);
+        public boolean isPlaying();
     }
 
     public MusicView(Context context) {
         super(context);
-        LayoutInflater.from(context).inflate(R.layout.music_view, this);
+        LayoutInflater.from(context).inflate(R.layout.music_view, this, true);
         initView();
     }
 
     public MusicView(Context context, AttributeSet attrs) {
         super(context, attrs);
-        LayoutInflater.from(context).inflate(R.layout.music_view, this);
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.MusicView);
+        String mode = a.getString(R.styleable.MusicView_viewMode);
+        if (mode.equals("home")) {
+            LayoutInflater.from(context).inflate(R.layout.music_view, this, true);
+            mMode = ViewMode.HOME;
+        } else {
+            LayoutInflater.from(context).inflate(R.layout.music_file_view, this, true);
+            mMode = ViewMode.FILE;
+        }
         initView();
     }
 
     public MusicView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
-        LayoutInflater.from(context).inflate(R.layout.music_view, this);
+        TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.MusicView);
+        String mode = a.getString(R.styleable.MusicView_viewMode);
+        if (mode.equals("home")) {
+            LayoutInflater.from(context).inflate(R.layout.music_view, this, true);
+            mMode = ViewMode.HOME;
+        } else {
+            LayoutInflater.from(context).inflate(R.layout.music_file_view, this, true);
+            mMode = ViewMode.FILE;
+        }
         initView();
     }
 
@@ -88,8 +111,14 @@ public class MusicView extends LinearLayout implements OnClickListener {
         mNext.setOnClickListener(this);
         mPrev = (ImageButton) findViewById(R.id.music_prev);
         mPrev.setOnClickListener(this);
-        mList = (ImageButton) findViewById(R.id.music_list);
-        mList.setOnClickListener(this);
+        if (mMode == ViewMode.HOME) {
+            mList = (ImageButton) findViewById(R.id.music_list);
+            mList.setOnClickListener(this);
+        } else {
+            mPlayMode = (ImageButton) findViewById(R.id.music_mode);
+            mPlayMode.setOnClickListener(this);
+        }
+        
         mVolume = (ImageButton) findViewById(R.id.music_volume);
         mVolume.setOnClickListener(this);
         getSoundEnable();
@@ -103,7 +132,7 @@ public class MusicView extends LinearLayout implements OnClickListener {
     }
 
     private void fillMusicInfo() {
-    	mMusicName.setText(mCurrentMusic.getName());
+    	mMusicName.setText(mCurrentMusic.getTitle());
     	mSinger.setText("- " + mCurrentMusic.getSinger());
     	Bitmap bm = FilesUtil.getAlbumArt(getContext(), mCurrentMusic.getAlbumID());
     	if (bm == null) {
@@ -112,32 +141,33 @@ public class MusicView extends LinearLayout implements OnClickListener {
     		mDrawable.setImageBitmap(bm);
     	}
     	mTime.setText(MusicUtil.formatTime(mCurrentMusic.getTime()));
-    	mPlayBar.setMax((int) mCurrentMusic.getTime());
     	mPlayBar.setProgress(0);
     }
 
     public void onClick(View v) {
+    	Log.e("@@@@", v.getId() + "");
         if (v.getId() == R.id.music_list) {
 			gotoMusicList();
 		} else if (v.getId() == R.id.music_play) {
-			if (isPlaying) {
-				mPlay.setImageResource(R.drawable.drawable_music_pause_button);
-                mControl.pause();
-            } else {
-            	mPlay.setImageResource(R.drawable.drawable_music_paly_button);
+			if (!mControl.isPlaying()) {
+				mPlay.setBackgroundResource(R.drawable.drawable_music_pause_button);
             	mControl.play(mControl.getPosition());
+            } else {
+            	mPlay.setBackgroundResource(R.drawable.drawable_music_paly_button);
+                mControl.pause();
             }
 		} else if (v.getId() == R.id.music_next) {
 			int position = mControl.getPosition() + 1;
 			setCurrentMusic(mControl.getCurrentMusic(position));
 			mControl.play(position);
 		} else if (v.getId() == R.id.music_prev) {
-			int position = mControl.getPosition() + 1;
+			int position = mControl.getPosition() - 1;
 			setCurrentMusic(mControl.getCurrentMusic(position));
 			mControl.play(position);
 		} else if (v.getId() == R.id.music_volume) {
 			adjustSoundEnable();
-		} else {
+		} else if (v.getId() == R.id.music_mode) {
+			
 		}
     }
 
@@ -213,22 +243,24 @@ public class MusicView extends LinearLayout implements OnClickListener {
         return super.onKeyDown(keyCode, event);
     }
 
-    private void changeViewSrc(ImageView view, int resources) {
-        view.setImageResource(resources);
+    private void changeViewSrc(ImageButton view, int resources) {
+        view.setBackgroundResource(resources);
     }
 
     public void isFirstViewMode(boolean mode) {
-    	if (mode) {
-    		findViewById(R.id.music_view).setVisibility(View.INVISIBLE);
+    	Log.e("@@@@", "" + mode);
+    	if (!mode) {
+    		findViewById(R.id.music_view).setVisibility(View.VISIBLE);
     		findViewById(R.id.music_view_default).setVisibility(View.GONE);
     	} else {
     		findViewById(R.id.music_view).setVisibility(View.GONE);
-    		findViewById(R.id.music_view_default).setVisibility(View.INVISIBLE);
+    		findViewById(R.id.music_view_default).setVisibility(View.VISIBLE);
     	}
     }
 
-    public void refreshSeekBar(int milliseconds) {
+    public void refreshSeekBar(int milliseconds, int max) {
         mPlayBar.setProgress(milliseconds);
+        mPlayBar.setMax(max);
         mTime.setText(MusicUtil.formatTime(milliseconds));
     }
 
