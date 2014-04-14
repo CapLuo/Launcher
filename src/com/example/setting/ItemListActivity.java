@@ -56,7 +56,21 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 			int position = intent.getIntExtra("position", 0);
 			adapter.setSelector(position);
 			adapter.notifyDataSetChanged();
-			onItemSelected(null, position);
+			String filePath = intent.getStringExtra("path");
+			switch (position) {
+			case 0:
+				currFragment = selectFragment(MyMedia.TYPE_VIDEO,filePath);
+				break;
+			case 1:
+				currFragment = selectFragment(MyMedia.TYPE_MUSIC,filePath);
+				break;
+			case 2:
+				currFragment = selectFragment(MyMedia.TYPE_GALLERY,filePath);
+				break;
+			case 3:
+				currFragment = selectFragment(MyMedia.TYPE_OTHER,filePath);
+				break;
+			}
 			itemListFragment.getListView().setItemChecked(position, true);
 		} else {
 			adapter.setSelector(0);
@@ -74,26 +88,29 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 		
 		switch (position) {
 		case 0:
-			currFragment = selectFragment(MyMedia.TYPE_VIDEO);
+			currFragment = selectFragment(MyMedia.TYPE_VIDEO,null);
 			break;
 		case 1:
-			currFragment = selectFragment(MyMedia.TYPE_MUSIC);
+			currFragment = selectFragment(MyMedia.TYPE_MUSIC,null);
 			break;
 		case 2:
-			currFragment = selectFragment(MyMedia.TYPE_GALLERY);
+			currFragment = selectFragment(MyMedia.TYPE_GALLERY,null);
 			break;
 		case 3:
-			currFragment = selectFragment(MyMedia.TYPE_OTHER);
+			currFragment = selectFragment(MyMedia.TYPE_OTHER,null);
 			break;
 		}
 		
 	}
 
-	private MyGridFragment selectFragment(int type) {
+	private MyGridFragment selectFragment(int type, String filePath) {
 		FragmentTransaction transaction = getSupportFragmentManager()
 				.beginTransaction();
 		Bundle arguments = new Bundle();
 		arguments.putInt("mediaType", type);
+		if(filePath != null){
+			arguments.putString("path", filePath);
+		}
 		MyGridFragment fragment = new MyGridFragment(usbTitleView);
 		fragment.setArguments(arguments);
 		transaction.replace(R.id.item_detail_container, fragment);

@@ -10,42 +10,25 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
 
 import com.android.custom.launcher.services.LauncherService;
+import com.android.custom.launcher.services.LauncherService.PlayMode;
 import com.android.custom.launcher.util.HttpHelper;
 import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.view.MusicView;
 import com.android.custom.launcher.view.PicsView;
 import com.android.custom.launcher.view.WeatherView;
+import com.example.setting.ItemListActivity;
+import com.example.setting.PlayMusicActivity;
 import com.example.setting.util.StoreUtil;
 
-public class Launcher extends BaseActivity {
+public class Launcher extends BaseActivity implements View.OnClickListener {
 
-	private Handler mHandler = new Handler() {
-		public void handleMessage(Message msg) {
-			if (msg.what == LauncherService.MUSIC_COMPLETE_ACTION) {
-				int position = msg.getData().getInt("position", -1);
-				if (position == -1) {
-					position = mService.getPosition() + 1;
-				}
-				mMusic.setCurrentMusic(mService.getPlayMusic(position));
-				MusicPlay(position);
-			}
-			if (msg.what == LauncherService.MUSIC_REFRESH_ACTION) {
-				mMusic.refreshSeekBar(getStartTime(), getMaxTime());
-			}
-        }
-	};
-
-	private Messenger mMessenger = null;
-    private MusicView mMusic;
+    private static MusicView mMusic;
     private Music mCurrentMusic;
 
     private LauncherService mService;
@@ -56,6 +39,29 @@ public class Launcher extends BaseActivity {
 
         public void onServiceConnected(ComponentName name, IBinder binder) {
             mService = ((LauncherService.LocalBinder) binder).getService();
+            mService.setRefreshListener(new LauncherService.RefreshListener() {
+				
+				public void refresh(final int startTime, final int maxTime,
+						final boolean isPause, final PlayMode mode) {
+					Launcher.this.runOnUiThread(new Runnable() {
+						
+						public void run() {
+							mMusic.refreshSeekBar(startTime, maxTime);
+							mMusic.refreshPlayButtonAndVolume(!isPause, mode);
+						}
+					});
+				}
+
+				public void setPlayMusicPostion(final int position) {
+					Launcher.this.runOnUiThread(new Runnable() {
+						
+						public void run() {
+							mCurrentMusic = mService.getPlayMusic(position);
+							mMusic.setCurrentMusic(mCurrentMusic);
+						}
+					});	
+				}
+			});
             mCurrentMusic = mService.getPlayMusic(mService.getPosition());
         	mMusic.isFirstViewMode(mCurrentMusic == null);
         	mMusic.setCurrentMusic(mCurrentMusic);
@@ -89,7 +95,7 @@ public class Launcher extends BaseActivity {
         imageView.setOnClickListener(new View.OnClickListener() {
 
             public void onClick(View v) {
-                Intent intent = new Intent(Launcher.this,Applications.class);
+                Intent intent = new Intent(Launcher.this,Apps.class);
                 startActivity(intent);
             }
         });
@@ -131,39 +137,46 @@ public class Launcher extends BaseActivity {
 				return false;
 			}
 
+			public void changeMode() {
+			}
+
+			public PlayMode getPlayMode() {
+				return null;
+			}
+
 		});
 
-        startMusicService();
+		View googlePlay = findViewById(R.id.google_play);
+		googlePlay.setOnClickListener(this);
+		
+		View browser = findViewById(R.id.browser);
+		browser.setOnClickListener(this);
+		
+		View usb = findViewById(R.id.img_my_usb);
+		usb.setOnClickListener(this);
+
+		View settings = findViewById(R.id.settings);
+		settings.setOnClickListener(this);
+
         getWeather();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (mService != null) {
-        	mCurrentMusic = mService.getPlayMusic(mService.getPosition());
-        	mMusic.isFirstViewMode(mCurrentMusic == null);
-        	mMusic.setCurrentMusic(mCurrentMusic);
-        }
-    }
-
-    @Override
+	@Override
 	protected void onStart() {
 		super.onStart();
 		picsView.updatePath();
+		startMusicService();
 	}
 
 	@Override
 	protected void onStop() {
 		picsView.savePath();
+		unbindService(mConn);
 		super.onStop();
 	}
 
 	private void startMusicService() {
-		mMessenger = new Messenger(mHandler);
         Intent intent = new Intent(this, LauncherService.class);
-        //intent.setAction(LauncherService.ACTION);
-        intent.putExtra("Messenger", mMessenger);
         this.bindService(intent, mConn, Context.BIND_AUTO_CREATE);
     }
 
@@ -227,14 +240,21 @@ public class Launcher extends BaseActivity {
 
     private void getWeather() {
         new Thread(new Runnable() {
-			@Override
 			public void run() {
 				String city = HttpHelper.getCity();
 				String woeid = HttpHelper.getWoeid(city);
-				woeid = xmlToString(woeid);
+				if (woeid != null) {
+					woeid = xmlToString(woeid);
+				} else {
+					return;
+				}
 				woeid = woeid.substring(woeid.lastIndexOf("woeid") + 6, woeid.lastIndexOf("woeid") + 14);
 				String wether = HttpHelper.getWeather(woeid);
-				xmlToStrings(wether);
+				if (wether != null) {
+					xmlToStrings(wether);
+				} else {
+					return;
+				}
 			}
 		}).start();
     }
@@ -265,12 +285,11 @@ public class Launcher extends BaseActivity {
 			final int temp = Integer.parseInt(iters.attributeValue("temp"));
 			runOnUiThread(new Runnable() {
 
-				@Override
 				public void run() {
 					mWeatherView.setWeather(code);
 					mWeatherView.setTemperature(temp);
 					StoreUtil.saveCodeAndTemp(Launcher.this, code, temp);
-					mHandler.postDelayed(mRefreshWeather, 60 * 1000 * 60);
+					//mHandler.postDelayed(mRefreshWeather, 60 * 1000 * 60);
 				}
 			});
 		} catch (DocumentException e) {
@@ -279,9 +298,39 @@ public class Launcher extends BaseActivity {
     }
     private Runnable mRefreshWeather = new Runnable() {
 		
-		@Override
 		public void run() {
 			getWeather();
 		}
 	};
+
+	public void onClick(View v) {
+		if (v.getId() == R.id.google_play) {
+            startActivityForSafely(Intent.ACTION_MAIN,
+            		"com.android.vending",
+            		"com.android.vending.AssetBrowserActivity");
+		}
+		if (v.getId() == R.id.browser) {
+			startActivityForSafely(Intent.ACTION_MAIN,
+					"com.android.browser","com.android.browser.BrowserActivity");
+		}
+		if (v.getId() == R.id.img_my_usb) {
+			Intent intent = new Intent();
+	        intent.setClass(this, ItemListActivity.class);
+	        startActivity(intent);
+		}
+		if (v.getId() == R.id.settings) {
+			Intent intent = new Intent();
+			intent.setClassName("com.android.settings", "com.android.settings.DisplaySettings");
+			startActivity(intent);
+		}
+	}
+	private void startActivityForSafely(String action, String packageName, String activityName) {
+		Intent intent = new Intent(action);
+		intent.setClassName(packageName, activityName);
+		if (getPackageManager().resolveActivity(intent, 0) != null) {
+			intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        	intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+        	this.startActivity(intent);
+		}
+	}
 }

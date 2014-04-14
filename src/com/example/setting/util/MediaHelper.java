@@ -898,6 +898,18 @@ public class MediaHelper {
 		return false;
 	}
 	
+	public int getPositionByPath(int type, String rootPath, String path) {
+		switch (type) {
+		case MyMedia.TYPE_VIDEO:
+			return getVideoPositionByPath(rootPath, path);
+		case MyMedia.TYPE_MUSIC:
+			return getMusicPositionByPath(rootPath, path);
+		case MyMedia.TYPE_GALLERY:
+			return getGalleryPositionByPath(rootPath, path);
+		}
+		return -1;
+	}
+	
 	public int getGalleryPositionByPath(String rootPath, String path) {
 		Cursor cursor = null;
 		try {
@@ -935,7 +947,34 @@ public class MediaHelper {
 					MediaStore.Video.Media.MIME_TYPE };
 			// 要读的列名,这些常量可以查GOOGLE官方开发文档,TITLE是标题 DATA是路径//REGEXP
 			cursor = mContentResolver.query(uri, columns,
-					MediaStore.Images.Media.DATA + " LIKE ?",
+					MediaStore.Video.Media.DATA + " LIKE ?",
+					new String[] { rootPath + "%" }, null);
+			while (cursor.moveToNext()) {
+				if(path.equals(cursor.getString(2))){
+					return cursor.getPosition();
+				}
+			}
+			return 0;
+		} catch (SQLiteException e) {
+			e.printStackTrace();
+			return 0;
+		} finally {
+			if (cursor != null)
+				cursor.close();
+		}
+	}
+	
+	public int getMusicPositionByPath(String rootPath, String path) {
+		Cursor cursor = null;
+		try {
+			Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+			String[] columns = new String[] { MediaStore.Video.Media._ID,
+					MediaStore.Audio.Media.DISPLAY_NAME,
+					MediaStore.Audio.Media.DATA,
+					MediaStore.Audio.Media.MIME_TYPE };
+			// 要读的列名,这些常量可以查GOOGLE官方开发文档,TITLE是标题 DATA是路径//REGEXP
+			cursor = mContentResolver.query(uri, columns,
+					MediaStore.Audio.Media.DATA + " LIKE ?",
 					new String[] { rootPath + "%" }, null);
 			while (cursor.moveToNext()) {
 				if(path.equals(cursor.getString(2))){

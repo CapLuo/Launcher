@@ -17,6 +17,7 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.android.custom.launcher.services.LauncherService.PlayMode;
 import com.android.custom.launcher.util.FilesUtil;
 import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.util.MusicUtil;
@@ -44,7 +45,9 @@ public class MusicView extends LinearLayout implements OnClickListener {
         public int getTime() { return 0;}
 		public Music getCurrentMusic(int position) { return null;}
 		public int getPosition() { return 0;}
-		public boolean isPlaying() {return false;}
+		public boolean isPlaying() { return false;}
+		public void changeMode() {}
+		public PlayMode getPlayMode() { return null;}
     };
 
     public void setOnMusicControl(MusicControl c) {
@@ -59,6 +62,8 @@ public class MusicView extends LinearLayout implements OnClickListener {
         public int getPosition();
         public Music getCurrentMusic(int position);
         public boolean isPlaying();
+        public void changeMode();
+        public PlayMode getPlayMode();
     }
 
     public MusicView(Context context) {
@@ -145,15 +150,22 @@ public class MusicView extends LinearLayout implements OnClickListener {
     }
 
     public void onClick(View v) {
-    	Log.e("@@@@", v.getId() + "");
         if (v.getId() == R.id.music_list) {
 			gotoMusicList();
 		} else if (v.getId() == R.id.music_play) {
 			if (!mControl.isPlaying()) {
-				mPlay.setBackgroundResource(R.drawable.drawable_music_pause_button);
+				if (mMode == ViewMode.HOME) {
+	    			mPlay.setBackgroundResource(R.drawable.drawable_music_pause_button);
+	    		} else {
+	    			mPlay.setBackgroundResource(R.drawable.drawable_file_music_pause);
+	    		}
             	mControl.play(mControl.getPosition());
             } else {
-            	mPlay.setBackgroundResource(R.drawable.drawable_music_paly_button);
+            	if (mMode == ViewMode.HOME) {
+        			mPlay.setBackgroundResource(R.drawable.drawable_music_paly_button);
+        		} else {
+        			mPlay.setBackgroundResource(R.drawable.drawable_file_music_play);
+        		}
                 mControl.pause();
             }
 		} else if (v.getId() == R.id.music_next) {
@@ -167,7 +179,15 @@ public class MusicView extends LinearLayout implements OnClickListener {
 		} else if (v.getId() == R.id.music_volume) {
 			adjustSoundEnable();
 		} else if (v.getId() == R.id.music_mode) {
-			
+			mControl.changeMode();
+			PlayMode mode = mControl.getPlayMode();
+			if (mode == PlayMode.ALL) {
+				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_random);
+			} else if (mode == PlayMode.RANDOM) {
+				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_repeat);
+			} else {
+				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_all);
+			}
 		}
     }
 
@@ -208,10 +228,18 @@ public class MusicView extends LinearLayout implements OnClickListener {
         mVolumeBar.setProgress(progress);
         if (progress == 0) {
             mSoundEnabled = false;
-            changeViewSrc(mVolume, R.drawable.drawable_music_volume_button_mute);
+            if (mMode == ViewMode.HOME) {
+            	changeViewSrc(mVolume, R.drawable.drawable_music_volume_button_mute);
+            } else {
+            	changeViewSrc(mVolume, R.drawable.drawable_file_music_volume_mute);
+            }
         } else {
             mSoundEnabled = true;
-            changeViewSrc(mVolume, R.drawable.drawable_music_volume_button);
+            if (mMode == ViewMode.HOME) {
+            	changeViewSrc(mVolume, R.drawable.drawable_music_volume_button);
+            } else {
+            	changeViewSrc(mVolume, R.drawable.drawable_file_music_volume);
+            }
         }
     }
 
@@ -264,6 +292,32 @@ public class MusicView extends LinearLayout implements OnClickListener {
         mPlayBar.setProgress(milliseconds);
         mPlayBar.setMax(max);
         mTime.setText(MusicUtil.formatTime(milliseconds));
+    }
+
+    public void refreshPlayButtonAndVolume(boolean isPlay, PlayMode mode) {
+    	if (!isPlay) {
+    		if (mMode == ViewMode.HOME) {
+    			mPlay.setBackgroundResource(R.drawable.drawable_music_paly_button);
+    		} else {
+    			mPlay.setBackgroundResource(R.drawable.drawable_file_music_play);
+    		}
+    	} else {
+    		if (mMode == ViewMode.HOME) {
+    			mPlay.setBackgroundResource(R.drawable.drawable_music_pause_button);
+    		} else {
+    			mPlay.setBackgroundResource(R.drawable.drawable_file_music_pause);
+    		}
+    	}
+    	if (mMode == ViewMode.FILE) {
+    		if (mode == PlayMode.ALL) {
+				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_all);
+			} else if (mode == PlayMode.RANDOM) {
+				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_random);
+			} else {
+				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_repeat);
+			}
+    	}
+    	getSoundEnable();
     }
 
 }

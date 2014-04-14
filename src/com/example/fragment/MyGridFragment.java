@@ -1,5 +1,6 @@
 package com.example.fragment;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
@@ -29,6 +30,9 @@ import com.example.setting.view.UsbTitleView;
 /**
  * @author hxy
  * TODO 游标adapter和下拉刷新解决内存溢出问题
+ * TODO 分页解决内存溢出问题和进入页面寻找焦点
+ * TODO 监听MediaScaner 刷新页面
+ * TODO Activity 返回时监听事件更新界面
  */
 public class MyGridFragment extends ComplexGridFragment implements
 		KeyBackListener {
@@ -45,9 +49,11 @@ public class MyGridFragment extends ComplexGridFragment implements
 	private MediaHelper mediaHelper;
 	
 	private boolean isPlayMusic = false;
-
 	private boolean isDataUpdate = false;
+	private boolean isAllPage = false;
 	private UsbTitleView usbTitleView;
+	
+	private String filePath;
 
 	/**
 	 * Mandatory empty constructor for the fragment manager to instantiate the
@@ -83,12 +89,13 @@ public class MyGridFragment extends ComplexGridFragment implements
 	@Override
 	public void onActivityCreated(Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
-		// load Data
+		//TODO asyn load Data
 
 		if (getActivity() != null) {
 			Bundle arguments = getArguments();
 			mediaType = arguments.getInt("mediaType");
 			isPlayMusic = arguments.getBoolean("isPlayMusic",false);
+			filePath = arguments.getString("path");
 			
 			textLoading.setVisibility(View.VISIBLE);
 			mGridView.setVisibility(View.GONE);
@@ -98,9 +105,14 @@ public class MyGridFragment extends ComplexGridFragment implements
 			mStack = new Stack<List>();
 			path = Environment.getExternalStorageDirectory().getAbsolutePath();
 			try {
-				if(isPlayMusic)
+				//音乐播放和视频，图片都是 打开loadAll
+				if(isPlayMusic || filePath != null){
 					mList = mediaHelper.loadAllMedia(path, mediaType);
-				else
+					mStack.push(new ArrayList<MyMedia>());
+					// 放到后面来，前面直接用根目录取，本来不用这个，只是为了配合back的时候去substring回来的
+					path = path + "/All "+getMediaTypeName();
+					isAllPage = true;
+				}else
 					mList = mediaHelper.loadMedia(path + "/", mediaType, true);
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -179,6 +191,18 @@ public class MyGridFragment extends ComplexGridFragment implements
 		return mGridView;
 	}
 
+	@Override
+	public void onResume() {
+		super.onResume();
+		if(filePath != null){
+			//把焦点移动到选择的文件上 
+			//TODO do it failed
+//			int position = mediaHelper.getPositionByPath(mediaType, path.substring(0,path.lastIndexOf("/")), filePath);
+//			mGridView.requestFocus();
+//			mGridView.setSelection(0);
+		}
+	}
+
 	public void openFile(int position) {
 		if (getActivity() != null && !adapter.isDelete()) {
 			MyMedia myMedia = mList.get(position);
@@ -189,6 +213,7 @@ public class MyGridFragment extends ComplexGridFragment implements
 				return;
 			}
 			if (type.intValue() == MyMedia.TYPE_DIR) {
+				isAllPage = false;//其实这里本来就一定是false
 				mStack.push(mList);
 				path = path + "/" + myMedia.getName();
 				try {
@@ -202,6 +227,7 @@ public class MyGridFragment extends ComplexGridFragment implements
 				mStack.push(mList);
 				try {
 					mList = mediaHelper.loadAllMedia(path + "/", mediaType);
+					isAllPage = true;
 				} catch (Exception e) {
 					e.printStackTrace();
 					Log.e("Catch", e.getMessage() + "");
@@ -223,7 +249,6 @@ public class MyGridFragment extends ComplexGridFragment implements
 					Toast.makeText(getActivity(), "File can't open!",
 							Toast.LENGTH_LONG).show();
 				}
-
 			}
 		} else if (getActivity() != null && adapter.isDelete()) {
 			MyMedia myMedia = mList.get(position);
@@ -270,36 +295,14 @@ public class MyGridFragment extends ComplexGridFragment implements
 					else
 						showDeleteFail(myMedia.getName());
 				}
-
-				// if (myMedia.getMediaType() == MyMedia.TYPE_DIR) {
-				// String dir = path+"/"+myMedia.getName();
-				// if(mediaType == MyMedia.TYPE_OTHER){
-				// List<MyMedia> loadOther =
-				// mediaHelper.loadAllOther(dir + "/");
-				// for (MyMedia m : loadOther) {
-				// if (mediaHelper.deleteMedia(mediaType,
-				// m.getId())) {
-				// isDataUpdate = true;
-				// }
-				// }
-				// } else {
-				// if (mediaHelper.deleteDirFile(mediaType,dir)) {
-				// isDataUpdate = true;
-				// }
-				// }
-				//
-				// } else if(myMedia.getMediaType() !=
-				// MyMedia.TYPE_ALL){
-				// if (mediaHelper.deleteAduio(mediaType,
-				// myMedia.getId(),myMedia.getPath())) {
-				// mList.remove(myMedia);
-				// isDataUpdate = true;
-				// }
-				// }
 			}
 		}
-
-		mList = mediaHelper.loadMedia(path + "/", mediaType, mStack.empty());
+		
+		if(isAllPage){
+			mList = mediaHelper.loadAllMedia(path.substring(0,path.lastIndexOf("/")), mediaType);
+		} else {
+			mList = mediaHelper.loadMedia(path + "/", mediaType, mStack.empty());
+		}
 		updateUI();
 		if(mList.size() > 0){
 			mGridView.requestFocus();
@@ -328,9 +331,11 @@ public class MyGridFragment extends ComplexGridFragment implements
 		}
 		
 		if (!mStack.isEmpty()) {
+			//返回的上层一定不是所有文件的界面
+			isAllPage = false;
 			path = path.substring(0, path.lastIndexOf("/"));
-			if (isDataUpdate) {
-				mStack.pop();
+			mList = mStack.pop();
+			if (isDataUpdate || mList.size() == 0) {
 				try {
 					mList = mediaHelper.loadMedia(path + "/", mediaType,
 							mStack.empty());
@@ -338,8 +343,7 @@ public class MyGridFragment extends ComplexGridFragment implements
 					e.printStackTrace();
 					Log.e("Catch", e.getMessage() + "");
 				}
-			} else
-				mList = mStack.pop();
+			}
 			adapter.setDelete(false);
 			gridTitleView.reset();
 			updateUI();

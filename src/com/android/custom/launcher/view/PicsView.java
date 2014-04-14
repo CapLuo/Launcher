@@ -133,6 +133,7 @@ public class PicsView extends LinearLayout {
 				Intent intent = new Intent();
 				intent.setClass(mContext, ItemListActivity.class);
 				intent.putExtra("position", 2);
+				intent.putExtra("path", cursor.getString(2));
 				mContext.startActivity(intent);
 			}
 

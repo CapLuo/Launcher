@@ -5,18 +5,15 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
 import android.support.v4.app.FragmentTransaction;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Window;
 import cn.ireliance.android.common.ui.SwitchCallbackFragmentActivity;
 
 import com.android.custom.launcher.R;
 import com.android.custom.launcher.services.LauncherService;
+import com.android.custom.launcher.services.LauncherService.PlayMode;
 import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.view.MusicView;
 import com.example.fragment.GridItemCallBack;
@@ -41,24 +38,8 @@ import com.example.setting.view.UsbTitleView;
  * interface to listen for item selections.
  */
 public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
-	private Handler mHandler = new Handler() {
-		public void handleMessage(Message msg) {
-			if (msg.what == LauncherService.MUSIC_COMPLETE_ACTION) {
-				int position = msg.getData().getInt("position", -1);
-				if (position == -1) {
-					position = mService.getPosition() + 1;
-				}
-				mMusic.setCurrentMusic(mService.getPlayMusic(position));
-				MusicPlay(position);
-			}
-			if (msg.what == LauncherService.MUSIC_REFRESH_ACTION) {
-				mMusic.refreshSeekBar(getStartTime(), getMaxTime());
-			}
-        }
-	};
 
-	private Messenger mMessenger = null;
-    private MusicView mMusic;
+    private static MusicView mMusic;
     private Music mCurrentMusic;
 
     private LauncherService mService;
@@ -69,6 +50,30 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 
         public void onServiceConnected(ComponentName name, IBinder binder) {
             mService = ((LauncherService.LocalBinder) binder).getService();
+            mService.setRefreshListener(new LauncherService.RefreshListener() {
+				
+				public void refresh(final int startTime, final int maxTime,
+						final boolean isPause, final PlayMode mode) {
+					PlayMusicActivity.this.runOnUiThread(new Runnable() {
+						
+						public void run() {
+							mMusic.refreshSeekBar(startTime, maxTime);
+							mMusic.refreshPlayButtonAndVolume(!isPause, mode);
+						}
+					});
+				}
+
+				public void setPlayMusicPostion(final int position) {
+					PlayMusicActivity.this.runOnUiThread(new Runnable() {
+						
+						public void run() {
+							mCurrentMusic = mService.getPlayMusic(position);
+							mMusic.setCurrentMusic(mCurrentMusic);
+							MusicPlay(position);
+						}
+					});	
+				}
+			});
             mCurrentMusic = mService.getPlayMusic(mService.getPosition());
         	mMusic.isFirstViewMode(mCurrentMusic == null);
         	mMusic.setCurrentMusic(mCurrentMusic);
@@ -124,10 +129,32 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 				return false;
 			}
 
+			public void changeMode() {
+				mService.changeMode();
+			}
+
+			public PlayMode getPlayMode() {
+				return mService.getMode();
+			}
+
 		});
 
-        startMusicService();
 	}
+
+
+	@Override
+	protected void onStart() {
+		startMusicService();
+		super.onStart();
+	}
+
+
+	@Override
+	protected void onStop() {
+		super.onStop();
+		unbindService(mConn);
+	}
+
 
 	private MyGridFragment selectFragment(int type) {
 		FragmentTransaction transaction = getSupportFragmentManager()
@@ -145,11 +172,7 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 	}
 	
 	private void startMusicService() {
-		Log.e("@@@@", "@@@2");
-		mMessenger = new Messenger(mHandler);
         Intent intent = new Intent(this, LauncherService.class);
-        //intent.setAction(LauncherService.ACTION);
-        intent.putExtra("Messenger", mMessenger);
         this.bindService(intent, mConn, Context.BIND_AUTO_CREATE);
     }
 

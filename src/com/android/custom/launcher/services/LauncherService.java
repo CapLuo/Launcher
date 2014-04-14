@@ -8,12 +8,7 @@ import android.app.Service;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Binder;
-import android.os.Bundle;
 import android.os.IBinder;
-import android.os.Message;
-import android.os.Messenger;
-import android.os.RemoteException;
-import android.util.Log;
 
 import com.android.custom.launcher.util.FilesUtil;
 import com.android.custom.launcher.util.Music;
@@ -28,39 +23,59 @@ public class LauncherService extends Service {
 	public static final String ACTION = "com.android.launcher.music";
 	public static final int MUSIC_COMPLETE_ACTION = 1;
 	public static final int MUSIC_REFRESH_ACTION = 2;
+	public static final int MUSIC_REFRESH_BUTTON_ACTION = 3;
 
 	private List<Music> mMusics = new CopyOnWriteArrayList<Music>();
 	private int mCurPosition = -1, mCount = 0;
 	private MediaPlayer mPlayer;
-	private Messenger mMessenger = null;
 	private PlayMode mMode = PlayMode.ALL;
+	private boolean isPause = false;
 
 	private boolean isRefreshMusicView = true;
 	private Runnable mRefreshMusicView = new Runnable() {
 
 		public void run() {
 			while (isRefreshMusicView) {
-				Message msg = Message.obtain();
-				msg.what = MUSIC_REFRESH_ACTION;
 				try {
-					mMessenger.send(msg);
+					if(refreshListener != null){
+						refreshListener.refresh(getStartTime(), getMaxTime(), isPause, mMode);
+					}
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
-					e.printStackTrace();
-				} catch (RemoteException e) {
 					e.printStackTrace();
 				}
 			}
 		}
 	};
+	
+	public interface RefreshListener{
+		public void refresh(int startTime, int maxTime, boolean isPause, PlayMode mode);
+		public void setPlayMusicPostion(int position);
+	}
+	private RefreshListener refreshListener;
+	public void setRefreshListener(RefreshListener refreshListener){
+		this.refreshListener = refreshListener;
+	}
 
 	@Override
 	public IBinder onBind(Intent intent) {
-		Log.e("@@@@", "3@@@");
 		mMusics = FilesUtil.getDataMusics(this);
 		mCount = mMusics.size();
-		mMessenger = (Messenger) intent.getExtras().get("Messenger");
 		return new LocalBinder();
+	}
+
+	@Override
+	public boolean onUnbind(Intent intent) {
+		return true;
+	}
+
+	@Override
+	public void onRebind(Intent intent) {
+		if (mPlayer != null && mPlayer.isPlaying()) {
+			isRefreshMusicView = true;
+			new Thread(mRefreshMusicView).start();
+		}
+		super.onRebind(intent);
 	}
 
 	public class LocalBinder extends Binder {
@@ -68,20 +83,30 @@ public class LauncherService extends Service {
 			return LauncherService.this;
 		}
 	}
+	
+	@Override
+	public void onDestroy() {
+		mPlayer.release();
+		mPlayer = null;
+		super.onDestroy();
+	}
+
 
 	public void play(int position) {
 		synchronized (lock) {
 
-			if (mCurPosition == position) {
+			if (isPause && mCurPosition == position) {
+				isPause = false;
 				mPlayer.start();
 			} else {
 				stop();
-				mCurPosition = (position + mMusics.size()) % mMusics.size();
+				if (mCount == 0) {
+					return;
+				}
+				mCurPosition = (position + mCount) % mCount;
 				try {
 					mPlayer = new MediaPlayer();
-
 					mPlayer.setDataSource(mMusics.get(mCurPosition).getUrl());
-					Log.e("@@@@", "" + mMusics.get(mCurPosition).getUrl());
 					mPlayer.prepare();
 				} catch (IllegalArgumentException e) {
 					e.printStackTrace();
@@ -95,6 +120,9 @@ public class LauncherService extends Service {
 					public void onCompletion(MediaPlayer mp) {
 						stop();
 						int position = 0;
+						if (mCount == 0) {
+							return;
+						}
 						if (mMode == PlayMode.ALL) {
 							position = (mCurPosition + 1) % mCount;
 						} else if (mMode == PlayMode.RANDOM) {
@@ -103,9 +131,12 @@ public class LauncherService extends Service {
 						} else {
 							position = mCurPosition;
 						}
-						sendMusicCompletionMSG(position);
+						if (refreshListener != null) {
+							refreshListener.setPlayMusicPostion(position);
+						}
 					}
 				});
+				isPause = false;
 				mPlayer.start();
 				isRefreshMusicView = true;
 				new Thread(mRefreshMusicView).start();
@@ -114,18 +145,26 @@ public class LauncherService extends Service {
 		}
 	}
 
-	private void sendMusicCompletionMSG(int position) {
-		if (mMessenger != null) {
-			Message msg = Message.obtain();
-			msg.what = MUSIC_COMPLETE_ACTION;
-			Bundle b = new Bundle();
-			b.putInt("position", position);
-			msg.setData(b);
-			try {
-				mMessenger.send(msg);
-			} catch (RemoteException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+	public void playID(int id) {
+		for (int i = 0; i < mMusics.size(); i++) {
+			if (mMusics.get(i).getId() == id) {
+				this.play(i);
+			}
+		}
+	}
+
+	public void deleteMusicForID(int id) {
+		synchronized (lock) {
+			int deleteId = -1;
+			for (int i = 0; i < mMusics.size(); i++) {
+				if (mMusics.get(i).getId() == id) {
+					deleteId = i;
+					break;
+				}
+			}
+			if (deleteId != -1) {
+				mMusics.remove(deleteId);
+				mCount = mMusics.size();
 			}
 		}
 	}
@@ -133,6 +172,7 @@ public class LauncherService extends Service {
 	public void pause() {
 		synchronized (lock) {
 			if (mPlayer != null && mPlayer.isPlaying()) {
+				isPause = true;
 				mPlayer.pause();
 			}
 		}
@@ -141,7 +181,8 @@ public class LauncherService extends Service {
 	public void stop() {
 		synchronized (lock) {
 			isRefreshMusicView = false;
-			if (mPlayer != null) {
+			if (mPlayer != null && mPlayer.isPlaying()) {
+				isPause = false;
 				mPlayer.stop();
 				mPlayer.release();
 				mPlayer = null;
@@ -165,6 +206,9 @@ public class LauncherService extends Service {
 
 	public Music getPlayMusic(int position) {
 		synchronized (lock) {
+			if (mCount == 0) {
+				return null;
+			}
 			position = (position + mCount) % mCount;
 			return mMusics.get(position);
 		}
@@ -185,4 +229,16 @@ public class LauncherService extends Service {
 		return mCurPosition;
 	}
 
+	public void changeMode () {
+		if (mMode == PlayMode.ALL) {
+			mMode = PlayMode.RANDOM;
+		} else if (mMode == PlayMode.RANDOM) {
+			mMode = PlayMode.REPEAT;
+		} else {
+			mMode = PlayMode.ALL;
+		}
+	}
+	public PlayMode getMode() {
+		return mMode;
+	}
 }

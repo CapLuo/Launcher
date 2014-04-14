@@ -39,6 +39,9 @@ public class HttpHelper {
 	public static final String getCity() {
 		String ret = get(IPTOCITY, null);
 		String city = null;
+		if (ret == null) {
+			return null;
+		}
 		try {
 			JSONObject jo = new JSONObject(ret);
 			city = JsonUtil.getJsonString("city", jo);
