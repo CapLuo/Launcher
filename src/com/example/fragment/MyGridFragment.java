@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Stack;
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.DialogInterface;
@@ -20,6 +22,7 @@ import android.widget.Toast;
 import cn.ireliance.android.common.ui.ComplexGridFragment;
 
 import com.android.custom.launcher.R;
+import com.example.setting.PlayMusicActivity;
 import com.example.setting.adapter.MyGridAdapter;
 import com.example.setting.adapter.MyMedia;
 import com.example.setting.listener.KeyBackListener;
@@ -27,13 +30,7 @@ import com.example.setting.util.MediaHelper;
 import com.example.setting.view.GridTitleView;
 import com.example.setting.view.UsbTitleView;
 
-/**
- * @author hxy
- * TODO 游标adapter和下拉刷新解决内存溢出问题
- * TODO 分页解决内存溢出问题和进入页面寻找焦点
- * TODO 监听MediaScaner 刷新页面
- * TODO Activity 返回时监听事件更新界面
- */
+@SuppressLint("ValidFragment")
 public class MyGridFragment extends ComplexGridFragment implements
 		KeyBackListener {
 	private View layoutMain;
@@ -44,15 +41,15 @@ public class MyGridFragment extends ComplexGridFragment implements
 	private TextView textLoading;
 	private Stack<List> mStack;
 	private List<MyMedia> mList;
-	private String path; 
+	private String path;
 	private int mediaType;
 	private MediaHelper mediaHelper;
-	
+
 	private boolean isPlayMusic = false;
 	private boolean isDataUpdate = false;
 	private boolean isAllPage = false;
 	private UsbTitleView usbTitleView;
-	
+
 	private String filePath;
 
 	/**
@@ -78,8 +75,8 @@ public class MyGridFragment extends ComplexGridFragment implements
 				false);
 		layoutMain = rootView.findViewById(R.id.layout_grid_fragment_main);
 		layoutEmpty = rootView.findViewById(R.id.layout_grid_fragment_empty);
-		mGridView = (GridView)rootView.findViewById(R.id.grid);
-		
+		mGridView = (GridView) rootView.findViewById(R.id.grid);
+
 		textLoading = (TextView) rootView.findViewById(R.id.tv_loading);
 		gridTitleView = (GridTitleView) rootView.findViewById(R.id.grid_title);
 		textLoading.setVisibility(View.VISIBLE);
@@ -89,14 +86,14 @@ public class MyGridFragment extends ComplexGridFragment implements
 	@Override
 	public void onActivityCreated(Bundle savedInstanceState) {
 		super.onActivityCreated(savedInstanceState);
-		//TODO asyn load Data
+		// TODO asyn load Data
 
 		if (getActivity() != null) {
 			Bundle arguments = getArguments();
 			mediaType = arguments.getInt("mediaType");
-			isPlayMusic = arguments.getBoolean("isPlayMusic",false);
+			isPlayMusic = arguments.getBoolean("isPlayMusic", false);
 			filePath = arguments.getString("path");
-			
+
 			textLoading.setVisibility(View.VISIBLE);
 			mGridView.setVisibility(View.GONE);
 
@@ -105,14 +102,14 @@ public class MyGridFragment extends ComplexGridFragment implements
 			mStack = new Stack<List>();
 			path = Environment.getExternalStorageDirectory().getAbsolutePath();
 			try {
-				//音乐播放和视频，图片都是 打开loadAll
-				if(isPlayMusic || filePath != null){
+				// 音乐播放和视频，图片都是 打开loadAll
+				if (isPlayMusic || filePath != null) {
 					mList = mediaHelper.loadAllMedia(path, mediaType);
 					mStack.push(new ArrayList<MyMedia>());
 					// 放到后面来，前面直接用根目录取，本来不用这个，只是为了配合back的时候去substring回来的
-					path = path + "/All "+getMediaTypeName();
+					path = path + "/All " + getMediaTypeName();
 					isAllPage = true;
-				}else
+				} else
 					mList = mediaHelper.loadMedia(path + "/", mediaType, true);
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -133,8 +130,9 @@ public class MyGridFragment extends ComplexGridFragment implements
 					// TODO async
 					LayoutInflater flater = LayoutInflater.from(getActivity());
 					View view = flater.inflate(R.layout.dialog_msg, null);
-					
-					final TextView textMsg = (TextView)view.findViewById(R.id.text_dialog_msg);
+
+					final TextView textMsg = (TextView) view
+							.findViewById(R.id.text_dialog_msg);
 					textMsg.setText("Are you sure you want to delete?");
 					AlertDialog.Builder builder = new AlertDialog.Builder(
 							getActivity());
@@ -168,7 +166,7 @@ public class MyGridFragment extends ComplexGridFragment implements
 
 				public void onChanged() {
 					updateUI();
-					//TODO move focus to last item
+					// TODO move focus to last item
 				}
 			});
 
@@ -180,7 +178,7 @@ public class MyGridFragment extends ComplexGridFragment implements
 			});
 
 			updateUI();
-			
+
 			textLoading.setVisibility(View.GONE);
 			mGridView.setVisibility(View.VISIBLE);
 		}
@@ -194,12 +192,14 @@ public class MyGridFragment extends ComplexGridFragment implements
 	@Override
 	public void onResume() {
 		super.onResume();
-		if(filePath != null){
-			//把焦点移动到选择的文件上 
-			//TODO do it failed
-//			int position = mediaHelper.getPositionByPath(mediaType, path.substring(0,path.lastIndexOf("/")), filePath);
-//			mGridView.requestFocus();
-//			mGridView.setSelection(0);
+		if (filePath != null) {
+			// 把焦点移动到选择的文件上
+			// TODO do it failed
+			// if file.equls "All"
+			// int position = mediaHelper.getPositionByPath(mediaType,
+			// path.substring(0,path.lastIndexOf("/")), filePath);
+			// mGridView.requestFocus();
+			// mGridView.setSelection(0);
 		}
 	}
 
@@ -213,7 +213,7 @@ public class MyGridFragment extends ComplexGridFragment implements
 				return;
 			}
 			if (type.intValue() == MyMedia.TYPE_DIR) {
-				isAllPage = false;//其实这里本来就一定是false
+				isAllPage = false;// 其实这里本来就一定是false
 				mStack.push(mList);
 				path = path + "/" + myMedia.getName();
 				try {
@@ -238,14 +238,16 @@ public class MyGridFragment extends ComplexGridFragment implements
 			} else {
 				String myMediaPath = myMedia.getPath();
 				String mimeType = myMedia.getMimeType();
-				if (myMediaPath != null && mimeType != null){
-					if(isPlayMusic)
-						;//TODO play music
-					else
+				if (myMediaPath != null && mimeType != null) {
+					if (isPlayMusic) {
+						Activity activity = getActivity();
+						if (activity instanceof PlayMusicActivity)
+							((PlayMusicActivity) activity).MusicPlay(myMedia
+									.getId());
+					} else
 						mediaHelper.play(myMediaPath, mimeType, mediaType);
-				}
-				else {
-					//TODO dialog
+				} else {
+					// TODO dialog
 					Toast.makeText(getActivity(), "File can't open!",
 							Toast.LENGTH_LONG).show();
 				}
@@ -272,7 +274,7 @@ public class MyGridFragment extends ComplexGridFragment implements
 						if (mediaHelper.deleteMedia(mediaType, m.getId(),
 								m.getPath()))
 							isDataUpdate = true;
-						else{
+						else {
 							showDeleteFail(m.getName());
 						}
 					}
@@ -297,20 +299,16 @@ public class MyGridFragment extends ComplexGridFragment implements
 				}
 			}
 		}
-		
-		if(isAllPage){
-			mList = mediaHelper.loadAllMedia(path.substring(0,path.lastIndexOf("/")), mediaType);
-		} else {
-			mList = mediaHelper.loadMedia(path + "/", mediaType, mStack.empty());
-		}
+
+		reLoadData();
 		updateUI();
-		if(mList.size() > 0){
+		if (mList.size() > 0) {
 			mGridView.requestFocus();
 			mGridView.setSelection(0);
 		}
 	}
 
-	public void deteleFileCanle(){
+	public void deteleFileCanle() {
 		for (MyMedia myMedia : mList) {
 			myMedia.setCheck(false);
 		}
@@ -319,30 +317,25 @@ public class MyGridFragment extends ComplexGridFragment implements
 		mGridView.requestFocus();
 		mGridView.setSelection(0);
 	}
-	
-	private void showDeleteFail(String name){
-		Toast.makeText(getActivity(), "Delete File " + name +" failed.", Toast.LENGTH_SHORT).show();
+
+	private void showDeleteFail(String name) {
+		Toast.makeText(getActivity(), "Delete File " + name + " failed.",
+				Toast.LENGTH_SHORT).show();
 	}
-	
+
 	public boolean onKeyBackDown() {
-		if(isPlayMusic){
+		if (isPlayMusic) {
 			getActivity().finish();
 			return false;
 		}
-		
+
 		if (!mStack.isEmpty()) {
-			//返回的上层一定不是所有文件的界面
+			// 返回的上层一定不是所有文件的界面
 			isAllPage = false;
 			path = path.substring(0, path.lastIndexOf("/"));
 			mList = mStack.pop();
 			if (isDataUpdate || mList.size() == 0) {
-				try {
-					mList = mediaHelper.loadMedia(path + "/", mediaType,
-							mStack.empty());
-				} catch (Exception e) {
-					e.printStackTrace();
-					Log.e("Catch", e.getMessage() + "");
-				}
+				reLoadData();
 			}
 			adapter.setDelete(false);
 			gridTitleView.reset();
@@ -352,35 +345,50 @@ public class MyGridFragment extends ComplexGridFragment implements
 		return false;
 	}
 
+	public void reLoadData() {
+		try {
+			if (isAllPage) {
+				mList = mediaHelper.loadAllMedia(
+						path.substring(0, path.lastIndexOf("/")), mediaType);
+			} else {
+				mList = mediaHelper.loadMedia(path + "/", mediaType,
+						mStack.empty());
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			Log.e("Catch", e.getMessage() + "");
+		}
+	}
+
 	public void updateUI() {
 		if (mList == null || mList.size() == 0) {
 			layoutMain.setVisibility(View.GONE);
 			layoutEmpty.setVisibility(View.VISIBLE);
-			
+
 		} else {
 			layoutMain.setVisibility(View.VISIBLE);
 			layoutEmpty.setVisibility(View.GONE);
-			
+
 			adapter = new MyGridAdapter(getActivity(), mList);
-			if(isPlayMusic){
+			if (isPlayMusic) {
 				boolean isList = gridTitleView.isList();
 				gridTitleView.setPlayMusic(true);
 				mGridView.setNumColumns(isList ? 1 : 7);
 				adapter.setPlayMusic(true);
 				adapter.setList(gridTitleView.isList());
-				//TODO move focus to curr play
+				// TODO move focus to curr play
 			}
 			mGridView.setAdapter(adapter);
 			gridTitleView.setTotal(mList == null ? 0 : mList.size());
 		}
-		if(isPlayMusic){
+		if (isPlayMusic) {
 			usbTitleView.setShowBack(true);
 			usbTitleView.setLeftGone();
-		}else
+		} else
 			usbTitleView.setShowBack(!mStack.empty());
 		usbTitleView.setRightText(mStack.empty() ? getMediaTypeName() : path
 				.substring(path.lastIndexOf("/") + 1));
-		
+
 	}
 
 	private String getMediaTypeName() {
@@ -400,6 +408,10 @@ public class MyGridFragment extends ComplexGridFragment implements
 	@Override
 	public void onDetach() {
 		super.onDetach();
+	}
+
+	public boolean isDataUpdate() {
+		return isDataUpdate;
 	}
 
 }

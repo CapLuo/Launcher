@@ -1,8 +1,12 @@
 package com.example.setting;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
@@ -35,6 +39,7 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 		ItemListFragment.Callbacks {
 	private MyGridFragment currFragment;
 	private UsbTitleView usbTitleView;
+	private MyBroadcastReceiver myBroadcastReceiver;
 
 	/**
 	 * Whether or not the activity is in two-pane mode, i.e. running on a tablet
@@ -80,6 +85,26 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 		}
 	}
 
+	@Override
+	protected void onStart() {
+		super.onStart();
+		if(myBroadcastReceiver == null){
+			IntentFilter intentfilter = new IntentFilter(Intent.ACTION_MEDIA_SCANNER_STARTED);
+			intentfilter.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
+			intentfilter.addDataScheme("file");
+			registerReceiver(myBroadcastReceiver, intentfilter);
+		}
+	}
+
+	@Override
+	protected void onStop() {
+		super.onStop();
+		if(myBroadcastReceiver != null){
+			unregisterReceiver(myBroadcastReceiver);
+			myBroadcastReceiver = null;
+		}
+	}
+
 	/**
 	 * Callback method from {@link ItemListFragment.Callbacks} indicating that
 	 * the item with the given ID was selected.
@@ -121,6 +146,20 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 	}
 
 	@Override
+	protected void onActivityResult (int requestCode, int resultCode, Intent data) {
+		if (requestCode == 100 ) {
+			if(data != null){
+				boolean isDataUpdate = data.getBooleanExtra("isDataUpdate", false);
+				if(isDataUpdate){
+					currFragment.reLoadData();
+					currFragment.updateUI();
+				}
+			}
+		}
+		super.onActivityResult(requestCode, resultCode, data);
+	}
+
+	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 		if(keyCode == KeyEvent.KEYCODE_BACK){
 			if (currFragment instanceof KeyBackListener) {
@@ -129,6 +168,30 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 			}
 		}
 		return super.onKeyDown(keyCode, event);
+	}
+	
+	private class MyBroadcastReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			if (Intent.ACTION_MEDIA_SCANNER_FINISHED.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_SCANNER_FINISHED");
+				currFragment.reLoadData();
+				currFragment.updateUI();
+			} else if (Intent.ACTION_MEDIA_SCANNER_STARTED.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_SCANNER_STARTED");
+			}else if (Intent.ACTION_MEDIA_MOUNTED.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_MOUNTED");
+			}else if (Intent.ACTION_MEDIA_UNMOUNTED.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_UNMOUNTED");
+			}else if (Intent.ACTION_MEDIA_EJECT.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_EJECT");
+				currFragment.reLoadData();
+				currFragment.updateUI();
+			}
+
+		}
+
 	}
 
 }

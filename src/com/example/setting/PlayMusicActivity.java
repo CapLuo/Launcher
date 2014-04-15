@@ -1,12 +1,15 @@
 package com.example.setting;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Window;
 import cn.ireliance.android.common.ui.SwitchCallbackFragmentActivity;
@@ -20,6 +23,7 @@ import com.example.fragment.GridItemCallBack;
 import com.example.fragment.MyGridFragment;
 import com.example.setting.adapter.MyMedia;
 import com.example.setting.listener.KeyBackListener;
+import com.example.setting.util.StoreUtil;
 import com.example.setting.view.UsbTitleView;
 
 /**
@@ -43,6 +47,9 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
     private Music mCurrentMusic;
 
     private LauncherService mService;
+    private MyBroadcastReceiver myBroadcastReceiver;
+    private String url;
+    
     private ServiceConnection mConn = new ServiceConnection() {
 
         public void onServiceDisconnected(ComponentName name) {
@@ -72,6 +79,10 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 							MusicPlay(position);
 						}
 					});	
+				}
+
+				public void refreshWether(int code, int temp) {
+					StoreUtil.saveCodeAndTemp(PlayMusicActivity.this, code, temp);
 				}
 			});
             mCurrentMusic = mService.getPlayMusic(mService.getPosition());
@@ -139,12 +150,22 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 
 		});
 
+		Intent intent = getIntent();
+		if (intent != null) {
+			url = intent.getStringExtra("path");
+		}
 	}
 
 
 	@Override
 	protected void onStart() {
 		startMusicService();
+		if(myBroadcastReceiver == null){
+			IntentFilter intentfilter = new IntentFilter(Intent.ACTION_MEDIA_SCANNER_STARTED);
+			intentfilter.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
+			intentfilter.addDataScheme("file");
+			registerReceiver(myBroadcastReceiver, intentfilter);
+		}
 		super.onStart();
 	}
 
@@ -153,6 +174,10 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 	protected void onStop() {
 		super.onStop();
 		unbindService(mConn);
+		if(myBroadcastReceiver != null){
+			unregisterReceiver(myBroadcastReceiver);
+			myBroadcastReceiver = null;
+		}
 	}
 
 
@@ -162,6 +187,7 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 		Bundle arguments = new Bundle();
 		arguments.putInt("mediaType", type);
 		arguments.putBoolean("isPlayMusic", true);
+		arguments.putString("path", url);
 		MyGridFragment fragment = new MyGridFragment(usbTitleView);
 		fragment.setArguments(arguments);
 		transaction.replace(R.id.item_detail_container, fragment);
@@ -179,6 +205,18 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
     private void MusicPlay(int position) {
 		if (mService != null) {
 			mService.play(position);
+		}
+    }
+    
+    public void MusicPlay(String id){
+    	if (mService != null) {
+    		long d = 0;
+    		try{
+    			d = Long.parseLong(id);
+    		}catch (NumberFormatException e) {
+    			e.printStackTrace();
+			}
+			mService.playID(d);
 		}
     }
 
@@ -238,5 +276,29 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 		}
         return super.onKeyDown(keyCode, event);
     }
+    
+    private class MyBroadcastReceiver extends BroadcastReceiver {
+
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			if (Intent.ACTION_MEDIA_SCANNER_FINISHED.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_SCANNER_FINISHED");
+				currFragment.reLoadData();
+				currFragment.updateUI();
+			} else if (Intent.ACTION_MEDIA_SCANNER_STARTED.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_SCANNER_STARTED");
+			}else if (Intent.ACTION_MEDIA_MOUNTED.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_MOUNTED");
+			}else if (Intent.ACTION_MEDIA_UNMOUNTED.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_UNMOUNTED");
+			}else if (Intent.ACTION_MEDIA_EJECT.equals(intent.getAction())) {
+				Log.i("Catch","ACTION_MEDIA_EJECT");
+				currFragment.reLoadData();
+				currFragment.updateUI();
+			}
+
+		}
+
+	}
 
 }

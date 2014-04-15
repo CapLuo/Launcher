@@ -1,37 +1,52 @@
 package com.android.custom.launcher;
 
-import org.dom4j.Document;
-import org.dom4j.DocumentException;
-import org.dom4j.DocumentHelper;
-import org.dom4j.Element;
+import java.util.Calendar;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.android.custom.launcher.services.LauncherService;
 import com.android.custom.launcher.services.LauncherService.PlayMode;
-import com.android.custom.launcher.util.HttpHelper;
+import com.android.custom.launcher.util.DateUtil;
 import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.view.MusicView;
 import com.android.custom.launcher.view.PicsView;
 import com.android.custom.launcher.view.WeatherView;
 import com.example.setting.ItemListActivity;
-import com.example.setting.PlayMusicActivity;
 import com.example.setting.util.StoreUtil;
 
+/**
+ * TODO 异步加载问题(包括Apps进入加载时异步加载)
+ * TODO home视频缩略图
+ * TODO home最大化图片
+ * TODO 打开Gallery页面焦点移动到该图片（音乐视频一样）/分页解决内存溢出问题
+ * TODO 首页焦点的移动和焦点的图片
+ * TODO home文字的设定
+ * TODO 点击音乐播放界面，可以播放音乐   FIX
+ * TODO 点击home音乐播放的右下角按钮，直接跳转到播放页面,并传一个path过来   KO
+ * 
+ * TODO 时间实现，天气优化  ko
+ * TODO 音乐播放第一个不能播放,PlayMusicActivity中音乐要显示总时长,点击静音按钮，按钮会移动 KO
+ * TODO Apps 界面优化，实现弹出菜单，点击删除
+ */
 public class Launcher extends BaseActivity implements View.OnClickListener {
 
     private static MusicView mMusic;
     private Music mCurrentMusic;
 
     private LauncherService mService;
+
     private ServiceConnection mConn = new ServiceConnection() {
 
         public void onServiceDisconnected(ComponentName name) {
@@ -58,8 +73,22 @@ public class Launcher extends BaseActivity implements View.OnClickListener {
 						public void run() {
 							mCurrentMusic = mService.getPlayMusic(position);
 							mMusic.setCurrentMusic(mCurrentMusic);
+							MusicPlay(position);
 						}
 					});	
+				}
+
+				public void refreshWether(final int code, final int temp) {
+					if (mWeatherView != null) {
+						Launcher.this.runOnUiThread(new Runnable() {
+							
+							public void run() {
+								StoreUtil.saveCodeAndTemp(Launcher.this, code, temp);
+								mWeatherView.setWeather(code);
+								mWeatherView.setTemperature(temp);
+							}
+						});	
+					}
 				}
 			});
             mCurrentMusic = mService.getPlayMusic(mService.getPosition());
@@ -68,8 +97,19 @@ public class Launcher extends BaseActivity implements View.OnClickListener {
         }
     };
 
+    private BroadcastReceiver mTimerReciver = new BroadcastReceiver() {
+		
+		@Override
+		public void onReceive(Context context, Intent intent) {
+			if (intent.getAction().equals(Intent.ACTION_TIME_TICK)) {
+				getTimeToRefresh();
+			}
+		}
+	};
+
 	private PicsView picsView;
 	private WeatherView mWeatherView;
+	private TextView mTime, mDate;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -77,19 +117,9 @@ public class Launcher extends BaseActivity implements View.OnClickListener {
 
         setContentView(R.layout.launcher);
 
+        mTime = (TextView) findViewById(R.id.home_time);
+        mDate = (TextView) findViewById(R.id.home_date);
         mWeatherView = (WeatherView)findViewById(R.id.weather);
-        int code = StoreUtil.loadCode(this);
-        int temp = StoreUtil.loadTemp(this);
-        if (code != -100) {
-            mWeatherView.setWeather(code);
-        } else {
-        	mWeatherView.setVisibility(View.GONE);
-        }
-        if (temp != -100) {
-        	mWeatherView.setTemperature(temp);
-        } else {
-            mWeatherView.setVisibility(View.GONE);
-        }
 
         ImageView imageView = (ImageView)findViewById(R.id.img_apps);
         imageView.setOnClickListener(new View.OnClickListener() {
@@ -158,14 +188,28 @@ public class Launcher extends BaseActivity implements View.OnClickListener {
 		View settings = findViewById(R.id.settings);
 		settings.setOnClickListener(this);
 
-        getWeather();
+		IntentFilter filter = new IntentFilter(Intent.ACTION_TIME_TICK);
+		registerReceiver(mTimerReciver, filter);
     }
 
 	@Override
 	protected void onStart() {
 		super.onStart();
+		int code = StoreUtil.loadCode(this);
+        int temp = StoreUtil.loadTemp(this);
+        if (code != -100) {
+            mWeatherView.setWeather(code);
+        } else {
+        	mWeatherView.setVisibility(View.GONE);
+        }
+        if (temp != -100) {
+        	mWeatherView.setTemperature(temp);
+        } else {
+            mWeatherView.setVisibility(View.GONE);
+        }
 		picsView.updatePath();
 		startMusicService();
+		getTimeToRefresh();
 	}
 
 	@Override
@@ -173,6 +217,12 @@ public class Launcher extends BaseActivity implements View.OnClickListener {
 		picsView.savePath();
 		unbindService(mConn);
 		super.onStop();
+	}
+
+	@Override
+	protected void onDestroy() {
+		unregisterReceiver(mTimerReciver);
+		super.onDestroy();
 	}
 
 	private void startMusicService() {
@@ -238,71 +288,6 @@ public class Launcher extends BaseActivity implements View.OnClickListener {
         return super.onKeyDown(keyCode, event);
     }
 
-    private void getWeather() {
-        new Thread(new Runnable() {
-			public void run() {
-				String city = HttpHelper.getCity();
-				String woeid = HttpHelper.getWoeid(city);
-				if (woeid != null) {
-					woeid = xmlToString(woeid);
-				} else {
-					return;
-				}
-				woeid = woeid.substring(woeid.lastIndexOf("woeid") + 6, woeid.lastIndexOf("woeid") + 14);
-				String wether = HttpHelper.getWeather(woeid);
-				if (wether != null) {
-					xmlToStrings(wether);
-				} else {
-					return;
-				}
-			}
-		}).start();
-    }
-
-    private String xmlToString(String woeid) {
-        Document doc = null;
-        try {
-			doc = DocumentHelper.parseText(woeid);
-			Element root = doc.getRootElement();
-			Element iters = root.element("s");
-			return iters.attributeValue("d");
-		} catch (DocumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-        return null;
-    }
-
-    private void xmlToStrings(String woeid) {
-        Document doc = null;
-        try {
-			doc = DocumentHelper.parseText(woeid);
-			Element root = doc.getRootElement();
-			Element cancel = root.element("channel");
-			Element item = cancel.element("item");
-			Element iters = item.element("condition");
-			final int code = Integer.parseInt(iters.attributeValue("code"));
-			final int temp = Integer.parseInt(iters.attributeValue("temp"));
-			runOnUiThread(new Runnable() {
-
-				public void run() {
-					mWeatherView.setWeather(code);
-					mWeatherView.setTemperature(temp);
-					StoreUtil.saveCodeAndTemp(Launcher.this, code, temp);
-					//mHandler.postDelayed(mRefreshWeather, 60 * 1000 * 60);
-				}
-			});
-		} catch (DocumentException e) {
-			e.printStackTrace();
-		}
-    }
-    private Runnable mRefreshWeather = new Runnable() {
-		
-		public void run() {
-			getWeather();
-		}
-	};
-
 	public void onClick(View v) {
 		if (v.getId() == R.id.google_play) {
             startActivityForSafely(Intent.ACTION_MAIN,
@@ -324,6 +309,7 @@ public class Launcher extends BaseActivity implements View.OnClickListener {
 			startActivity(intent);
 		}
 	}
+
 	private void startActivityForSafely(String action, String packageName, String activityName) {
 		Intent intent = new Intent(action);
 		intent.setClassName(packageName, activityName);
@@ -332,5 +318,18 @@ public class Launcher extends BaseActivity implements View.OnClickListener {
         	intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         	this.startActivity(intent);
 		}
+	}
+
+	private void getTimeToRefresh() {
+
+		long time=System.currentTimeMillis();
+		final Calendar mCalendar=Calendar.getInstance();
+		mCalendar.setTimeInMillis(time);
+		mTime.setText(mCalendar.get(Calendar.HOUR) + ":"
+		        + mCalendar.get(Calendar.MINUTE));
+		Log.e("@@@@", mCalendar.get(Calendar.HOUR) + ":"
+		        + mCalendar.get(Calendar.MINUTE));
+		mDate.setText(DateUtil.getMonth(mCalendar.get(Calendar.MONTH)) + " " + mCalendar.get(Calendar.DAY_OF_MONTH) + ", " + mCalendar.get(Calendar.YEAR) + " " + DateUtil.getDay(mCalendar.get(Calendar.DAY_OF_WEEK)));
+		Log.e("@@@@", (DateUtil.getMonth(mCalendar.get(Calendar.MONTH))) + " " + mCalendar.get(Calendar.DAY_OF_MONTH) + " " + mCalendar.get(Calendar.YEAR) + " " + DateUtil.getDay(mCalendar.get(Calendar.DAY_OF_WEEK)));
 	}
 }

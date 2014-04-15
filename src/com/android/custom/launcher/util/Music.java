@@ -2,7 +2,7 @@ package com.android.custom.launcher.util;
 
 public class Music {
 
-	private int id;//歌曲id
+	private long id;//歌曲id
 	private String title;//标题
 	private String name;//歌名
 	private String singer;//歌手
@@ -12,10 +12,10 @@ public class Music {
 	private long size;//大小
 	private long time;//时间
 	
-	public int getId() {
+	public long getId() {
 		return id;
 	}
-	public void setId(int id) {
+	public void setId(long id) {
 		this.id = id;
 	}
 	public String getName() {

@@ -115,7 +115,9 @@ public class PicsView extends LinearLayout {
 		if (iBtnDefault.getVisibility() == View.GONE)
 			StoreUtil.savePicPath(mContext,
 					((MyPagerAdapter) mPager.getAdapter()).getCurrPath());
-		cursor.close();
+		if (cursor != null) {
+			cursor.close();
+		}
 	}
 
 	private OnClickListener clickListener = new OnClickListener() {
@@ -128,12 +130,17 @@ public class PicsView extends LinearLayout {
 				int p2 = mPager.getCurrentItem() + 1;
 				mPager.setCurrentItem(p2 <= cursor.getCount() ? p2 : cursor
 						.getCount());
-			} else if (v.getId() == R.id.btn_pic_menu
-					|| v.getId() == R.id.btn_pic_default) {
+			} else if (v.getId() == R.id.btn_pic_menu) {
 				Intent intent = new Intent();
 				intent.setClass(mContext, ItemListActivity.class);
 				intent.putExtra("position", 2);
 				intent.putExtra("path", cursor.getString(2));
+				mContext.startActivity(intent);
+			} else if(v.getId() == R.id.btn_pic_default){
+				Intent intent = new Intent();
+				intent.setClass(mContext, ItemListActivity.class);
+				intent.putExtra("position", 2);
+				intent.putExtra("path", "All");
 				mContext.startActivity(intent);
 			}
 

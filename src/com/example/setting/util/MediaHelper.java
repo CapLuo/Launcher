@@ -318,7 +318,7 @@ public class MediaHelper {
 				Object key = entry.getKey();
 				Object val = entry.getValue();
 				myMedia = new MyMedia();
-				myMedia.setImage(R.drawable.otherfiles_foder1);
+				myMedia.setImage(R.drawable.otherfiles_foder);
 				myMedia.setName((String) entry.getKey());
 				myMedia.setMediaType(MyMedia.TYPE_DIR);
 				myMedia.setTotal((Integer) entry.getValue());
@@ -330,7 +330,7 @@ public class MediaHelper {
 				// 根目录才有all的文件夹
 				myMedia = new MyMedia();
 				myMedia.setName("All Files");
-				myMedia.setImage(R.drawable.otherfiles_foder);
+				myMedia.setImage(R.drawable.otherfiles_foder1);
 				myMedia.setTotal(total);
 				myMedia.setMediaType(MyMedia.TYPE_ALL);
 				listDir.add(0, myMedia);

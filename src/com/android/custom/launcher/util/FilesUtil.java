@@ -29,10 +29,9 @@ public class FilesUtil {
 			if (cursor == null) {
 				return null;
 			}
-			cursor.moveToFirst();
 			while(cursor.moveToNext()){
 				
-				int id = cursor.getInt(cursor.getColumnIndex(BaseColumns._ID));
+				long id = cursor.getLong(cursor.getColumnIndex(BaseColumns._ID));
 				String title = cursor.getString(cursor
 						.getColumnIndex(MediaColumns.TITLE));
 				String name = cursor.getString(cursor.

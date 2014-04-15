@@ -23,6 +23,7 @@ import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.util.MusicUtil;
 import com.android.custom.launcher.R;
 import com.example.setting.ItemListActivity;
+import com.example.setting.PlayMusicActivity;
 
 public class MusicView extends LinearLayout implements OnClickListener {
 
@@ -97,7 +98,7 @@ public class MusicView extends LinearLayout implements OnClickListener {
             LayoutInflater.from(context).inflate(R.layout.music_file_view, this, true);
             mMode = ViewMode.FILE;
         }
-        initView();
+        initView(); 
     }
 
     private void initView() {
@@ -182,19 +183,19 @@ public class MusicView extends LinearLayout implements OnClickListener {
 			mControl.changeMode();
 			PlayMode mode = mControl.getPlayMode();
 			if (mode == PlayMode.ALL) {
-				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_random);
-			} else if (mode == PlayMode.RANDOM) {
-				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_repeat);
-			} else {
 				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_all);
+			} else if (mode == PlayMode.RANDOM) {
+				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_random);
+			} else {
+				mPlayMode.setBackgroundResource(R.drawable.drawable_music_mode_repeat);
 			}
 		}
     }
 
     private void gotoMusicList() {
         Intent intent = new Intent();
-        intent.setClass(getContext(), ItemListActivity.class);
-        intent.putExtra("position", 1);
+        intent.setClass(getContext(), PlayMusicActivity.class);
+        intent.putExtra("path", mCurrentMusic.getUrl());
         getContext().startActivity(intent);
     }
 
@@ -209,12 +210,20 @@ public class MusicView extends LinearLayout implements OnClickListener {
             }
             mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0);
             mVolumeBar.setProgress(volume);
-            changeViewSrc(mVolume, R.drawable.drawable_music_volume_button);
+            if (mMode == ViewMode.HOME) {
+            	changeViewSrc(mVolume, R.drawable.drawable_music_volume_button);
+            } else {
+            	changeViewSrc(mVolume, R.drawable.drawable_file_music_volume);
+            }
         } else {
             volume = mAudioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
             mAudioManager.setStreamVolume(AudioManager.STREAM_MUSIC, 0, 0);
             mVolumeBar.setProgress(0);
-            changeViewSrc(mVolume, R.drawable.drawable_music_volume_button_mute);
+            if (mMode == ViewMode.HOME) {
+            	changeViewSrc(mVolume, R.drawable.drawable_music_volume_button_mute);
+            } else {
+            	changeViewSrc(mVolume, R.drawable.drawable_file_music_volume_mute);
+            }
         }
         mSoundEnabled = !mSoundEnabled;
     }

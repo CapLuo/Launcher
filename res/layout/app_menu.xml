@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="140dp"
+    android:orientation="vertical"
+    android:background="@drawable/setting_press"
+    android:layout_gravity="center" >
+    
+	<ImageButton android:id="@+id/delete"
+	    android:layout_width="100dp"
+	    android:layout_height="100dp"
+	    android:padding="10dp"
+	    android:scaleType="fitXY"
+	    android:layout_centerInParent="true"
+	    android:src="@drawable/delete"
+	    android:background="@drawable/drawable_app_delete_item"/>
+</RelativeLayout>
