@@ -7,21 +7,26 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.media.ThumbnailUtils;
 import android.net.Uri;
 import android.provider.BaseColumns;
 import android.provider.MediaStore;
-import android.provider.MediaStore.Images.Thumbnails;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.android.custom.launcher.R;
 import com.example.setting.PlayMusicActivity;
@@ -30,8 +35,8 @@ import com.example.setting.adapter.MyMedia;
 public class MediaHelper {
 	private Context mContext;
 	private ContentResolver mContentResolver;
-	private int imageWidth;
-	private int imageHeight;
+	public final int imageWidth;
+	public final int imageHeight;
 
 	public MediaHelper(Context context, int imageWidth, int imageHeight) {
 		this.mContext = context;
@@ -40,25 +45,26 @@ public class MediaHelper {
 		this.imageHeight = imageHeight;
 	}
 
-	private Bitmap getAlbumArt(String album_id) {
-		String mUriAlbums = "content://media/external/audio/albums";
-		String[] projection = new String[] { "album_art" };
-		Cursor cur = mContentResolver.query(
-				Uri.parse(mUriAlbums + "/" + album_id), projection, null, null,
-				null);
+	private String getAlbumArtPath(String album_id) {
+		Cursor cur = null;
 		String album_art = null;
-		if (cur.getCount() > 0 && cur.getColumnCount() > 0) {
-			cur.moveToNext();
-			album_art = cur.getString(0);
+		try {
+			String mUriAlbums = "content://media/external/audio/albums";
+			String[] projection = new String[] { "album_art" };
+			cur = mContentResolver.query(
+					Uri.parse(mUriAlbums + "/" + album_id), projection, null,
+					null, null);
+			if (cur.getCount() > 0 && cur.getColumnCount() > 0) {
+				cur.moveToNext();
+				album_art = cur.getString(0);
+			}
+		} catch (SQLiteException e) {
+			e.printStackTrace();
+		} finally {
+			if (cur != null)
+				cur.close();
 		}
-		cur.close();
-		cur = null;
-		
-		if (album_art == null)
-			return null;
-
-		Bitmap bm = getImageThumbnail(album_art);
-		return bm;
+		return album_art;
 	}
 
 	/**
@@ -75,34 +81,68 @@ public class MediaHelper {
 	 *            指定输出图像的高度
 	 * @return 生成的缩略图
 	 */
-	public Bitmap getImageThumbnail(String imagePath) {
+	public static Bitmap getImageThumbnail(int width, int height,
+			String imagePath) {
 		Bitmap bitmap = null;
-		BitmapFactory.Options options = new BitmapFactory.Options();
-		options.inJustDecodeBounds = true;
-		// 获取这个图片的宽和高，注意此处的bitmap为null
-		bitmap = BitmapFactory.decodeFile(imagePath, options);
-		options.inJustDecodeBounds = false; // 设为 false
-		// 计算缩放比
-		int h = options.outHeight;
-		int w = options.outWidth;
-		int beWidth = w / imageWidth;
-		int beHeight = h / imageHeight;
-		int be = 1;
-		if (beWidth < beHeight) {
-			be = beWidth;
-		} else {
-			be = beHeight;
+		try {
+			BitmapFactory.Options options = new BitmapFactory.Options();
+			options.inJustDecodeBounds = true;
+			// 获取这个图片的宽和高，注意此处的bitmap为null
+			bitmap = BitmapFactory.decodeFile(imagePath, options);
+			options.inJustDecodeBounds = false; // 设为 false
+			// 计算缩放比
+			int h = options.outHeight;
+			int w = options.outWidth;
+			int beWidth = w / width;
+			int beHeight = h / height;
+			int be = 1;
+			if (beWidth < beHeight) {
+				be = beWidth;
+			} else {
+				be = beHeight;
+			}
+			if (be <= 0) {
+				be = 1;
+			}
+			options.inSampleSize = be;
+			// 重新读入图片，读取缩放后的bitmap，注意这次要把options.inJustDecodeBounds 设为 false
+			bitmap = BitmapFactory.decodeFile(imagePath, options);
+			// 利用ThumbnailUtils来创建缩略图，这里要指定要缩放哪个Bitmap对象
+			bitmap = ThumbnailUtils.extractThumbnail(bitmap, width, height,
+					ThumbnailUtils.OPTIONS_RECYCLE_INPUT);
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-		if (be <= 0) {
-			be = 1;
-		}
-		options.inSampleSize = be;
-		// 重新读入图片，读取缩放后的bitmap，注意这次要把options.inJustDecodeBounds 设为 false
-		bitmap = BitmapFactory.decodeFile(imagePath, options);
-		// 利用ThumbnailUtils来创建缩略图，这里要指定要缩放哪个Bitmap对象
-		bitmap = ThumbnailUtils.extractThumbnail(bitmap, imageWidth,
-				imageHeight, ThumbnailUtils.OPTIONS_RECYCLE_INPUT);
 		return bitmap;
+	}
+
+	// 图片圆角处理
+	public static Bitmap getRoundedBitmap(Bitmap mBitmap, float roundPx) {
+		try {
+			// 创建新的位图
+			Bitmap bgBitmap = Bitmap.createBitmap(mBitmap.getWidth(),
+					mBitmap.getHeight(), Config.ARGB_8888);
+			// 把创建的位图作为画板
+			Canvas mCanvas = new Canvas(bgBitmap);
+
+			Paint mPaint = new Paint();
+			Rect mRect = new Rect(0, 0, mBitmap.getWidth(), mBitmap.getHeight());
+			RectF mRectF = new RectF(mRect);
+			// 设置圆角半径为20
+			// float roundPx = 15;
+			mPaint.setAntiAlias(true);
+			// 先绘制圆角矩形
+			mCanvas.drawRoundRect(mRectF, roundPx, roundPx, mPaint);
+
+			// 设置图像的叠加模式
+			mPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_IN));
+			// 绘制图像
+			mCanvas.drawBitmap(mBitmap, mRect, mRect, mPaint);
+			return bgBitmap;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
 	}
 
 	/**
@@ -120,12 +160,17 @@ public class MediaHelper {
 	 *            其中，MINI_KIND: 512 x 384，MICRO_KIND: 96 x 96
 	 * @return 指定大小的视频缩略图
 	 */
-	public Bitmap getVideoThumbnail(String videoPath, int kind) {
+	public static Bitmap getVideoThumbnail(int width, int height,
+			String videoPath, int kind) {
 		Bitmap bitmap = null;
 		// 获取视频的缩略图
-		bitmap = ThumbnailUtils.createVideoThumbnail(videoPath, kind);
-		bitmap = ThumbnailUtils.extractThumbnail(bitmap, imageWidth,
-				imageHeight, ThumbnailUtils.OPTIONS_RECYCLE_INPUT);
+		try {
+			bitmap = ThumbnailUtils.createVideoThumbnail(videoPath, kind);
+			bitmap = ThumbnailUtils.extractThumbnail(bitmap, width, height,
+					ThumbnailUtils.OPTIONS_RECYCLE_INPUT);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return bitmap;
 	}
 
@@ -200,17 +245,19 @@ public class MediaHelper {
 				// 判断该文件是不是当前文件夹下的文件，如果是当前文件夹下的文件则只显示出文件夹
 				if (abPath.matches(getRegexp(path))) {
 					MyMedia myMedia = new MyMedia();
-					Bitmap bitmap = getVideoThumbnail(abPath,
-							Thumbnails.MICRO_KIND);
-					if (bitmap != null) {
-						BitmapDrawable bd = new BitmapDrawable(bitmap);
-						myMedia.setImage(bd);
-						myMedia.setMediaType(MyMedia.TYPE_VIDEO);
-					} else {
-						myMedia.setImage(R.drawable.otherfiles_file);
-						myMedia.setMediaType(MyMedia.TYPE_VIDEO_N);
-					}
-
+					// Bitmap bitmap = getVideoThumbnail(imageWidth,
+					// imageHeight,
+					// abPath, Thumbnails.MICRO_KIND);
+					// if (bitmap != null) {
+					// BitmapDrawable bd = new BitmapDrawable(bitmap);
+					// myMedia.setImage(bd);
+					// myMedia.setMediaType(MyMedia.TYPE_VIDEO);
+					// } else {
+					// myMedia.setImage(R.drawable.otherfiles_file);
+					// myMedia.setMediaType(MyMedia.TYPE_VIDEO_N);
+					// }
+					myMedia.setImage(R.drawable.otherfiles_file);
+					myMedia.setMediaType(MyMedia.TYPE_VIDEO_N);
 					myMedia.setId(id);
 					myMedia.setName(name);
 					myMedia.setPath(abPath);
@@ -373,15 +420,19 @@ public class MediaHelper {
 				String mimeType = cursor.getString(3);
 				if (abPath.matches(getRegexp(path))) {
 					MyMedia myMedia = new MyMedia();
-					Bitmap bitmap = getImageThumbnail(abPath);
-					if (bitmap != null) {
-						BitmapDrawable bd = new BitmapDrawable(bitmap);
-						myMedia.setImage(bd);
-						myMedia.setMediaType(MyMedia.TYPE_GALLERY);
-					} else {
-						myMedia.setMediaType(MyMedia.TYPE_GALLERY_N);
-						myMedia.setImage(R.drawable.otherfiles_file);
-					}
+//					Bitmap bitmap = getImageThumbnail(imageWidth, imageHeight,
+//							abPath);
+//					if (bitmap != null) {
+//						BitmapDrawable bd = new BitmapDrawable(bitmap);
+//						myMedia.setImage(bd);
+//						myMedia.setMediaType(MyMedia.TYPE_GALLERY);
+//					} else {
+//						myMedia.setMediaType(MyMedia.TYPE_GALLERY_N);
+//						myMedia.setImage(R.drawable.otherfiles_file);
+//					}
+					
+					myMedia.setMediaType(MyMedia.TYPE_GALLERY_N);
+					myMedia.setImage(R.drawable.otherfiles_file);
 
 					myMedia.setId(id);
 					myMedia.setName(name);
@@ -446,7 +497,7 @@ public class MediaHelper {
 					MediaStore.Audio.Media.DATA,
 					MediaStore.Audio.Media.MIME_TYPE,
 					MediaStore.Audio.Media.ALBUM_ID,
-					MediaStore.Audio.Media.DURATION};
+					MediaStore.Audio.Media.DURATION };
 			// 要读的列名,这些常量可以查GOOGLE官方开发文档,TITLE是标题 DATA是路径//REGEXP
 			cursor = mContentResolver.query(AUDIO_URI, columns,
 					MediaStore.Audio.Media.DATA + " LIKE ?",
@@ -462,21 +513,27 @@ public class MediaHelper {
 				int duration = cursor.getInt(5);
 				if (abPath.matches(getRegexp(path))) {
 					MyMedia myMedia = new MyMedia();
-					Bitmap bitmap = getAlbumArt(album_id);
-					if (bitmap != null) {
-						BitmapDrawable bd = new BitmapDrawable(bitmap);
-						myMedia.setImage(bd);
-						myMedia.setMediaType(MyMedia.TYPE_MUSIC);
-					} else {
-						myMedia.setMediaType(MyMedia.TYPE_MUSIC_N);
-						myMedia.setImage(R.drawable.music_tile_picture_default);
-					}
+					String albumArtPath = getAlbumArtPath(album_id);
+					// Bitmap bitmap = getImageThumbnail(imageWidth,
+					// imageHeight, albumArtPath);
+					// if (bitmap != null) {
+					// BitmapDrawable bd = new BitmapDrawable(bitmap);
+					// myMedia.setImage(bd);
+					// myMedia.setMediaType(MyMedia.TYPE_MUSIC);
+					// } else {
+					// myMedia.setMediaType(MyMedia.TYPE_MUSIC_N);
+					// myMedia.setImage(R.drawable.music_tile_picture_default);
+					// }
+					
+					myMedia.setMediaType(MyMedia.TYPE_MUSIC_N);
+					myMedia.setImage(R.drawable.music_tile_picture_default);
 
 					myMedia.setId(id);
 					myMedia.setName(name);
 					myMedia.setPath(abPath);
 					myMedia.setMimeType(mimeType);
 					myMedia.setDuration(duration);
+					myMedia.setAlbumArtPath(albumArtPath);
 					listFile.add(myMedia);
 				} else {
 					String dirName = getDirNameInPath(abPath, path);
@@ -607,21 +664,27 @@ public class MediaHelper {
 				String album_id = cursor.getString(4);
 				int duration = cursor.getInt(5);
 				MyMedia myMedia = new MyMedia();
-				Bitmap bitmap = getAlbumArt(album_id);
-				if (bitmap != null) {
-					BitmapDrawable bd = new BitmapDrawable(bitmap);
-					myMedia.setImage(bd);
-					myMedia.setMediaType(MyMedia.TYPE_MUSIC);
-				} else {
-					myMedia.setMediaType(MyMedia.TYPE_MUSIC_N);
-					myMedia.setImage(R.drawable.music_tile_picture_default);
-				}
+				String albumArtPath = getAlbumArtPath(album_id);
+				// Bitmap bitmap = getImageThumbnail(imageWidth, imageHeight,
+				// albumArtPath);
+				// if (bitmap != null) {
+				// BitmapDrawable bd = new BitmapDrawable(bitmap);
+				// myMedia.setImage(bd);
+				// myMedia.setMediaType(MyMedia.TYPE_MUSIC);
+				// } else {
+				// myMedia.setMediaType(MyMedia.TYPE_MUSIC_N);
+				// myMedia.setImage(R.drawable.music_tile_picture_default);
+				// }
 
+				myMedia.setMediaType(MyMedia.TYPE_MUSIC_N);
+				myMedia.setImage(R.drawable.music_tile_picture_default);
+				
 				myMedia.setId(id);
 				myMedia.setName(name);
 				myMedia.setPath(abPath);
 				myMedia.setMimeType(mimeType);
 				myMedia.setDuration(duration);
+				myMedia.setAlbumArtPath(albumArtPath);
 				listFile.add(myMedia);
 			}
 		} catch (SQLiteException e) {
@@ -655,15 +718,19 @@ public class MediaHelper {
 				String abPath = cursor.getString(2);
 				String mimeType = cursor.getString(3);
 				MyMedia myMedia = new MyMedia();
-				Bitmap bitmap = getVideoThumbnail(abPath, Thumbnails.MICRO_KIND);
-				if (bitmap != null) {
-					BitmapDrawable bd = new BitmapDrawable(bitmap);
-					myMedia.setImage(bd);
-					myMedia.setMediaType(MyMedia.TYPE_VIDEO);
-				} else {
-					myMedia.setMediaType(MyMedia.TYPE_VIDEO_N);
-					myMedia.setImage(R.drawable.otherfiles_file);
-				}
+//				Bitmap bitmap = getVideoThumbnail(imageWidth, imageHeight,
+//						abPath, Thumbnails.MICRO_KIND);
+//				if (bitmap != null) {
+//					BitmapDrawable bd = new BitmapDrawable(bitmap);
+//					myMedia.setImage(bd);
+//					myMedia.setMediaType(MyMedia.TYPE_VIDEO);
+//				} else {
+//					myMedia.setMediaType(MyMedia.TYPE_VIDEO_N);
+//					myMedia.setImage(R.drawable.otherfiles_file);
+//				}
+				
+				myMedia.setMediaType(MyMedia.TYPE_VIDEO_N);
+				myMedia.setImage(R.drawable.otherfiles_file);
 
 				myMedia.setId(id);
 				myMedia.setName(name);
@@ -702,16 +769,20 @@ public class MediaHelper {
 				String abPath = cursor.getString(2);
 				String mimeType = cursor.getString(3);
 				MyMedia myMedia = new MyMedia();
-				Bitmap bitmap = getImageThumbnail(abPath);
-				if (bitmap != null) {
-					BitmapDrawable bd = new BitmapDrawable(bitmap);
-					myMedia.setImage(bd);
-					myMedia.setMediaType(MyMedia.TYPE_GALLERY);
-				} else {
-					myMedia.setMediaType(MyMedia.TYPE_GALLERY_N);
-					myMedia.setImage(R.drawable.otherfiles_file);
-				}
+//				Bitmap bitmap = getImageThumbnail(imageWidth, imageHeight,
+//						abPath);
+//				if (bitmap != null) {
+//					BitmapDrawable bd = new BitmapDrawable(bitmap);
+//					myMedia.setImage(bd);
+//					myMedia.setMediaType(MyMedia.TYPE_GALLERY);
+//				} else {
+//					myMedia.setMediaType(MyMedia.TYPE_GALLERY_N);
+//					myMedia.setImage(R.drawable.otherfiles_file);
+//				}
 
+				myMedia.setMediaType(MyMedia.TYPE_GALLERY_N);
+				myMedia.setImage(R.drawable.otherfiles_file);
+				
 				myMedia.setId(id);
 				myMedia.setName(name);
 				myMedia.setPath(abPath);
@@ -770,18 +841,24 @@ public class MediaHelper {
 		return listFile;
 	}
 
-	public void play(String path, String mimeType, int mediaType) {
+	// mediaType 为全局的,不带N
+	public void play(String path, String mimeType, int mediaType, String id) {
 		Uri uri = Uri.parse("file://" + path);
 		Intent intent = new Intent(Intent.ACTION_VIEW);
 		intent.setDataAndType(uri, mimeType);
-		if (MyMedia.TYPE_MUSIC == mediaType)
-//			intent.setComponent(new ComponentName("com.android.music",
-//					"com.android.music.MediaPlaybackActivity"));
+		if (MyMedia.TYPE_MUSIC == mediaType) {
+			// intent.setComponent(new ComponentName("com.android.music",
+			// "com.android.music.MediaPlaybackActivity"));
+			intent.putExtra("musicId", id);
+			intent.putExtra("path", path);
 			intent.setClass(mContext, PlayMusicActivity.class);
-		if (MyMedia.TYPE_GALLERY == mediaType){
-			intent.setComponent(new ComponentName("com.android.gallery",
-					"com.android.camera.ViewImage"));
+		} else if (MyMedia.TYPE_GALLERY == mediaType) {
+//			intent.setComponent(new ComponentName("com.android.gallery",
+//					"com.android.camera.ViewImage"));
 			StoreUtil.savePicPath(mContext, path);
+		} else if (MyMedia.TYPE_VIDEO == mediaType) {
+			StoreUtil.saveVideoPath(mContext, path);
+			StoreUtil.saveVideoMimeType(mContext, mimeType);
 		}
 
 		mContext.startActivity(intent);
@@ -790,11 +867,11 @@ public class MediaHelper {
 	public boolean deleteMedia(int mediaType, String id, String path) {
 		Uri uri = getUri(mediaType);
 		try {
-			if(deleteFile(path)){
-				int s = mContentResolver.delete(uri, BaseColumns._ID + "=" + id,
-						null);
+			if (deleteFile(path)) {
+				int s = mContentResolver.delete(uri,
+						BaseColumns._ID + "=" + id, null);
 				return s > 0 ? true : false;
-			}else
+			} else
 				return false;
 		} catch (Exception e) {
 			Log.e("Catch", "delete:" + e.getMessage());
@@ -805,91 +882,89 @@ public class MediaHelper {
 			return false;
 		}
 	}
-	
-//	public boolean deleteMedia(int mediaType, String id, String path) {
-//		Uri uri = getUri(mediaType);
-//		try {
-//			if(mediaType == MyMedia.TYPE_OTHER || mediaType == MyMedia.TYPE_MUSIC){
-//				if(deleteFile(path)){
-//					int s = mContentResolver.delete(uri, BaseColumns._ID + "=" + id,
-//							null);
-//					return s > 0 ? true : false;
-//				}
-//				return false;
-//			} else {
-//				int s = mContentResolver.delete(uri, BaseColumns._ID + "=" + id,
-//						null);
-//				return s > 0 ? true : false;
-//			}
-//		} catch (Exception e) {
-//			Log.e("Catch", "delete:" + e.getMessage());
-//			Log.e("Catch", "id:" + id);
-//			Log.e("Catch", "path:" + path);
-//			Log.e("Catch", "mediaType:" + mediaType);
-//			Log.e("Catch", "uri:" + (uri == null ? null : uri.toString()));
-//			return false;
-//		}
-//	}
 
-//	public boolean deleteDirFile(int mediaType, String path) {
-//		// 保证本文件夹目录不被删除
-//		path = path + "/";
-//		Uri uri = MediaStore.Files.getContentUri("external");
-//		try {
-//			int s = mContentResolver.delete(uri,
-//					MediaStore.Files.FileColumns.DATA + " LIKE ? AND "
-//							+ MediaStore.Files.FileColumns.MEDIA_TYPE + "="
-//							+ getMediaType(mediaType), new String[] { path
-//							+ "%" });
-//			return s > 0 ? true : false;
-//		} catch (Exception e) {
-//			Log.e("Catch", "delete:" + e.getMessage());
-//			Log.e("Catch", "path:" + path);
-//			Log.e("Catch", "uri:" + (uri == null ? null : uri.toString()));
-//			return false;
-//		}
-//	}
-//
-//	public boolean deleteDir(String path) {
-//		Uri uri = MediaStore.Files.getContentUri("external");
-//		try {
-//			Cursor c = mContentResolver.query(uri, null,
-//					MediaStore.Files.FileColumns.DATA + " LIKE ? ",
-//					new String[] { path + "%" }, null);
-//			if (c.getCount() == 1) {
-//				int s = mContentResolver.delete(uri,
-//						MediaStore.Files.FileColumns.DATA + " LIKE ? ",
-//						new String[] { path + "%" });
-//				return s > 0 ? true : false;
-//			} else {
-//				return false;
-//			}
-//		} catch (Exception e) {
-//			Log.e("Catch", "delete:" + e.getMessage());
-//			Log.e("Catch", "path:" + path);
-//			Log.e("Catch", "uri:" + (uri == null ? null : uri.toString()));
-//			return false;
-//		}
-//	}
-//
-//	public boolean deleteAll(int mediaType) {
-//		Uri uri = getUri(mediaType);
-//		try {
-//			int s = mContentResolver.delete(uri, null, null);
-//			return s > 0 ? true : false;
-//		} catch (Exception e) {
-//			Log.e("Catch", "delete:" + e.getMessage());
-//			Log.e("Catch", "mediaType:" + mediaType);
-//			Log.e("Catch", "uri:" + (uri == null ? null : uri.toString()));
-//			return false;
-//		}
-//	}
+	// public boolean deleteMedia(int mediaType, String id, String path) {
+	// Uri uri = getUri(mediaType);
+	// try {
+	// if(mediaType == MyMedia.TYPE_OTHER || mediaType == MyMedia.TYPE_MUSIC){
+	// if(deleteFile(path)){
+	// int s = mContentResolver.delete(uri, BaseColumns._ID + "=" + id,
+	// null);
+	// return s > 0 ? true : false;
+	// }
+	// return false;
+	// } else {
+	// int s = mContentResolver.delete(uri, BaseColumns._ID + "=" + id,
+	// null);
+	// return s > 0 ? true : false;
+	// }
+	// } catch (Exception e) {
+	// Log.e("Catch", "delete:" + e.getMessage());
+	// Log.e("Catch", "id:" + id);
+	// Log.e("Catch", "path:" + path);
+	// Log.e("Catch", "mediaType:" + mediaType);
+	// Log.e("Catch", "uri:" + (uri == null ? null : uri.toString()));
+	// return false;
+	// }
+	// }
+
+	// public boolean deleteDirFile(int mediaType, String path) {
+	// // 保证本文件夹目录不被删除
+	// path = path + "/";
+	// Uri uri = MediaStore.Files.getContentUri("external");
+	// try {
+	// int s = mContentResolver.delete(uri,
+	// MediaStore.Files.FileColumns.DATA + " LIKE ? AND "
+	// + MediaStore.Files.FileColumns.MEDIA_TYPE + "="
+	// + getMediaType(mediaType), new String[] { path
+	// + "%" });
+	// return s > 0 ? true : false;
+	// } catch (Exception e) {
+	// Log.e("Catch", "delete:" + e.getMessage());
+	// Log.e("Catch", "path:" + path);
+	// Log.e("Catch", "uri:" + (uri == null ? null : uri.toString()));
+	// return false;
+	// }
+	// }
+	//
+	// public boolean deleteDir(String path) {
+	// Uri uri = MediaStore.Files.getContentUri("external");
+	// try {
+	// Cursor c = mContentResolver.query(uri, null,
+	// MediaStore.Files.FileColumns.DATA + " LIKE ? ",
+	// new String[] { path + "%" }, null);
+	// if (c.getCount() == 1) {
+	// int s = mContentResolver.delete(uri,
+	// MediaStore.Files.FileColumns.DATA + " LIKE ? ",
+	// new String[] { path + "%" });
+	// return s > 0 ? true : false;
+	// } else {
+	// return false;
+	// }
+	// } catch (Exception e) {
+	// Log.e("Catch", "delete:" + e.getMessage());
+	// Log.e("Catch", "path:" + path);
+	// Log.e("Catch", "uri:" + (uri == null ? null : uri.toString()));
+	// return false;
+	// }
+	// }
+	//
+	// public boolean deleteAll(int mediaType) {
+	// Uri uri = getUri(mediaType);
+	// try {
+	// int s = mContentResolver.delete(uri, null, null);
+	// return s > 0 ? true : false;
+	// } catch (Exception e) {
+	// Log.e("Catch", "delete:" + e.getMessage());
+	// Log.e("Catch", "mediaType:" + mediaType);
+	// Log.e("Catch", "uri:" + (uri == null ? null : uri.toString()));
+	// return false;
+	// }
+	// }
 
 	private boolean deleteFile(String path) {
-		Log.i("Catch", "path:" + path);
 		try {
 			File file = new File(path);
-			Log.i("Catch", "file.isFile()"+file.isFile());
 			if (file.isFile())
 				return file.delete();
 		} catch (Exception e) {
@@ -897,7 +972,7 @@ public class MediaHelper {
 		}
 		return false;
 	}
-	
+
 	public int getPositionByPath(int type, String rootPath, String path) {
 		switch (type) {
 		case MyMedia.TYPE_VIDEO:
@@ -909,7 +984,7 @@ public class MediaHelper {
 		}
 		return -1;
 	}
-	
+
 	public int getGalleryPositionByPath(String rootPath, String path) {
 		Cursor cursor = null;
 		try {
@@ -923,7 +998,7 @@ public class MediaHelper {
 					MediaStore.Images.Media.DATA + " LIKE ?",
 					new String[] { rootPath + "%" }, null);
 			while (cursor.moveToNext()) {
-				if(path.equals(cursor.getString(2))){
+				if (path.equals(cursor.getString(2))) {
 					return cursor.getPosition();
 				}
 			}
@@ -936,7 +1011,7 @@ public class MediaHelper {
 				cursor.close();
 		}
 	}
-	
+
 	public int getVideoPositionByPath(String rootPath, String path) {
 		Cursor cursor = null;
 		try {
@@ -950,7 +1025,7 @@ public class MediaHelper {
 					MediaStore.Video.Media.DATA + " LIKE ?",
 					new String[] { rootPath + "%" }, null);
 			while (cursor.moveToNext()) {
-				if(path.equals(cursor.getString(2))){
+				if (path.equals(cursor.getString(2))) {
 					return cursor.getPosition();
 				}
 			}
@@ -963,7 +1038,7 @@ public class MediaHelper {
 				cursor.close();
 		}
 	}
-	
+
 	public int getMusicPositionByPath(String rootPath, String path) {
 		Cursor cursor = null;
 		try {
@@ -977,7 +1052,7 @@ public class MediaHelper {
 					MediaStore.Audio.Media.DATA + " LIKE ?",
 					new String[] { rootPath + "%" }, null);
 			while (cursor.moveToNext()) {
-				if(path.equals(cursor.getString(2))){
+				if (path.equals(cursor.getString(2))) {
 					return cursor.getPosition();
 				}
 			}

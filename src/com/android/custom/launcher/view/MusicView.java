@@ -17,12 +17,11 @@ import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import com.android.custom.launcher.R;
 import com.android.custom.launcher.services.LauncherService.PlayMode;
 import com.android.custom.launcher.util.FilesUtil;
 import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.util.MusicUtil;
-import com.android.custom.launcher.R;
-import com.example.setting.ItemListActivity;
 import com.example.setting.PlayMusicActivity;
 
 public class MusicView extends LinearLayout implements OnClickListener {
@@ -49,6 +48,7 @@ public class MusicView extends LinearLayout implements OnClickListener {
 		public boolean isPlaying() { return false;}
 		public void changeMode() {}
 		public PlayMode getPlayMode() { return null;}
+		public void seekTo(int mesc) { }
     };
 
     public void setOnMusicControl(MusicControl c) {
@@ -65,6 +65,7 @@ public class MusicView extends LinearLayout implements OnClickListener {
         public boolean isPlaying();
         public void changeMode();
         public PlayMode getPlayMode();
+        public void seekTo(int mesc);
     }
 
     public MusicView(Context context) {
@@ -109,7 +110,35 @@ public class MusicView extends LinearLayout implements OnClickListener {
         mDrawable = (ImageView) findViewById(R.id.music_image);
 
         mPlayBar = (SeekBar) findViewById(R.id.music_seekbar);
+        mPlayBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+            public void onStopTrackingTouch(SeekBar arg0) { }
+
+            public void onStartTrackingTouch(SeekBar arg0) { }
+
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+            	if (fromUser)
+            		mControl.seekTo(progress);
+            }
+        });
+
         mVolumeBar = (SeekBar) findViewById(R.id.music_volume_seekbar);
+        mVolumeBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+			public void onProgressChanged(SeekBar seekBar, int progress,
+					boolean fromUser) {
+				if (fromUser) {
+					AudioManager audioManager = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+					audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, progress, 0);
+					volume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+					mVolumeBar.setProgress(volume);
+				}
+			}
+
+			public void onStartTrackingTouch(SeekBar seekBar) { }
+
+			public void onStopTrackingTouch(SeekBar seekBar) { }
+		});
 
         mPlay = (ImageButton) findViewById(R.id.music_play);
         mPlay.setOnClickListener(this);
@@ -128,6 +157,18 @@ public class MusicView extends LinearLayout implements OnClickListener {
         mVolume = (ImageButton) findViewById(R.id.music_volume);
         mVolume.setOnClickListener(this);
         getSoundEnable();
+        
+        setOnFocusChangeListener(new OnFocusChangeListener() {
+
+			public void onFocusChange(View v, boolean hasFocus) {
+				if (hasFocus) {
+					mPlay.setFocusable(true);
+					mPlay.setFocusableInTouchMode(true);
+					mPlay.requestFocus();
+				}
+
+			}
+		});
     }
 
     public void setCurrentMusic(Music music) {
@@ -300,7 +341,11 @@ public class MusicView extends LinearLayout implements OnClickListener {
     public void refreshSeekBar(int milliseconds, int max) {
         mPlayBar.setProgress(milliseconds);
         mPlayBar.setMax(max);
-        mTime.setText(MusicUtil.formatTime(milliseconds));
+        if (mMode == ViewMode.HOME) {
+        	mTime.setText(MusicUtil.formatTime(milliseconds));
+        } else {
+        	mTime.setText(MusicUtil.formatTime(milliseconds) + "/" + MusicUtil.formatTime(max));
+        }
     }
 
     public void refreshPlayButtonAndVolume(boolean isPlay, PlayMode mode) {

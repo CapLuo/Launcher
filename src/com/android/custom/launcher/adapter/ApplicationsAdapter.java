@@ -2,8 +2,6 @@ package com.android.custom.launcher.adapter;
 
 import java.util.ArrayList;
 
-import com.android.custom.launcher.R;
-
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -15,9 +13,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.android.custom.launcher.R;
 
 public class ApplicationsAdapter extends BaseAdapter
 {
@@ -30,11 +29,13 @@ public class ApplicationsAdapter extends BaseAdapter
         private ResolveInfo mResolveInfo = null;
         private String mTitle = null;
         private Drawable mIcon = null;
+        private boolean isSystem = false;
 
-        public AppItem(PackageManager packageManager, ResolveInfo info) {
+        public AppItem(PackageManager packageManager, ResolveInfo info, boolean system) {
             this.mPackageManager = packageManager;
             this.mResolveInfo = info;
             mTitle = info.activityInfo.applicationInfo.loadLabel(packageManager).toString();
+            isSystem = system;
         }
 
         public ResolveInfo getResolveInfo() {
@@ -77,20 +78,19 @@ public class ApplicationsAdapter extends BaseAdapter
             return intent;
         }
 
+        
+        public boolean isSystem() {
+        	return isSystem;
+        }
     }
 
     private LayoutInflater mInflater = null;
     private ArrayList<AppItem> mApps = new ArrayList<AppItem>();
     private WorkState mWorkState = WorkState.NORMAL;
 
-    public ApplicationsAdapter(Context context, GridView gridView)
+    public ApplicationsAdapter(Context context,ArrayList<AppItem> apps)
     {
-        gridView.setAdapter(this);
         mInflater = LayoutInflater.from(context);
-    }
-
-    public void setAppItems(ArrayList<AppItem> apps)
-    {
         mApps = apps;
     }
 
@@ -111,14 +111,15 @@ public class ApplicationsAdapter extends BaseAdapter
 
     public Object getItem(int position)
     {
-        // TODO Auto-generated method stub
+        if(mApps != null){
+        	return mApps.get(position);
+        }
         return null;
     }
 
     public long getItemId(int position)
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return position;
     }
 
     public View getView(int position, View convertView, ViewGroup parent)
@@ -133,10 +134,10 @@ public class ApplicationsAdapter extends BaseAdapter
         TextView textview = (TextView)ret_view.findViewById(R.id.app_name);
         ImageView imageview = (ImageView)ret_view.findViewById(R.id.app_icon);
         ImageView unload = (ImageView)ret_view.findViewById(R.id.app_unload);
-        if (mWorkState == WorkState.NORMAL) {
-            unload.setVisibility(View.GONE);
-        } else {
+        if (mWorkState == WorkState.UNINSTALL && !app.isSystem()) {
             unload.setVisibility(View.VISIBLE);
+        } else {
+            unload.setVisibility(View.GONE);
         }
 
         textview.setText(app.getTitle());

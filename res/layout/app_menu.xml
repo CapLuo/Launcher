@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="140dp"
     android:orientation="vertical"
-    android:background="@drawable/setting_press"
+    android:background="#D3D3D300"
     android:layout_gravity="center" >
     
 	<ImageButton android:id="@+id/delete"

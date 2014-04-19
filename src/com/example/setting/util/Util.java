@@ -1,10 +1,13 @@
 ﻿package com.example.setting.util;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-import android.os.Environment;
+import android.app.Dialog;
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.WindowManager.LayoutParams;
 
 import com.android.custom.launcher.R;
 
@@ -20,8 +23,8 @@ public class Util {
 		return ret;
 	}
 	
-	public File getRootFile() {
-		return Environment.getExternalStorageDirectory();
+	public static String getRootFilePath() {
+		return "/storage/external_storage";//"/mnt/sdcard";
 	}
 
 	public static ArrayList<HashMap<String, Object>> getLeftMainMenuDatas() {
@@ -52,5 +55,16 @@ public class Util {
 		datas.add(map);
 
 		return datas;
+	}
+	
+	public static Dialog progressDialog(Context context, String title, String str) {
+		  LayoutInflater flater = LayoutInflater.from(context);
+		  View view = flater.inflate(R.layout.custom_progress_dialog, null);
+		  LayoutParams params = new LayoutParams();
+		  Dialog dialog = new Dialog(context, R.style.custom_dialog);
+		  dialog.setCancelable(false);
+		  dialog.addContentView(view, params);
+		  return dialog;
+		 
 	}
 }

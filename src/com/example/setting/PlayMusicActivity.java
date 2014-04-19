@@ -1,5 +1,8 @@
 package com.example.setting;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -12,7 +15,7 @@ import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Window;
-import cn.ireliance.android.common.ui.SwitchCallbackFragmentActivity;
+import android.widget.Toast;
 
 import com.android.custom.launcher.R;
 import com.android.custom.launcher.services.LauncherService;
@@ -21,9 +24,11 @@ import com.android.custom.launcher.util.Music;
 import com.android.custom.launcher.view.MusicView;
 import com.example.fragment.GridItemCallBack;
 import com.example.fragment.MyGridFragment;
+import com.example.fragment.SwitchCallbackFragmentActivity;
 import com.example.setting.adapter.MyMedia;
 import com.example.setting.listener.KeyBackListener;
 import com.example.setting.util.StoreUtil;
+import com.example.setting.util.UpdateUITask;
 import com.example.setting.view.UsbTitleView;
 
 /**
@@ -49,6 +54,8 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
     private LauncherService mService;
     private MyBroadcastReceiver myBroadcastReceiver;
     private String url;
+	private ExecutorService threadPool;
+	private String id;
     
     private ServiceConnection mConn = new ServiceConnection() {
 
@@ -70,13 +77,14 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 					});
 				}
 
-				public void setPlayMusicPostion(final int position) {
+				public void setPlayMusicPostion(final int position, final boolean isNeedPlay) {
 					PlayMusicActivity.this.runOnUiThread(new Runnable() {
 						
 						public void run() {
 							mCurrentMusic = mService.getPlayMusic(position);
 							mMusic.setCurrentMusic(mCurrentMusic);
-							MusicPlay(position);
+							if (isNeedPlay)
+								MusicPlay(position);
 						}
 					});	
 				}
@@ -88,6 +96,7 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
             mCurrentMusic = mService.getPlayMusic(mService.getPosition());
         	mMusic.isFirstViewMode(mCurrentMusic == null);
         	mMusic.setCurrentMusic(mCurrentMusic);
+        	MusicPlay(id);
         }
     };
 
@@ -103,6 +112,15 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.activity_play_music);
+		
+		Intent intent = getIntent();
+		if (intent != null) {
+			url = intent.getStringExtra("path");
+			id = intent.getStringExtra("musicId");
+		}
+		
+		threadPool = Executors.newCachedThreadPool();
+		
 		usbTitleView = (UsbTitleView)findViewById(R.id.usb_title);
 		currFragment = selectFragment(MyMedia.TYPE_MUSIC);
 		
@@ -148,12 +166,11 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 				return mService.getMode();
 			}
 
-		});
+			public void seekTo(int mesc) {
+				setMusicSeekTO(mesc);
+			}
 
-		Intent intent = getIntent();
-		if (intent != null) {
-			url = intent.getStringExtra("path");
-		}
+		});
 	}
 
 
@@ -161,7 +178,8 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 	protected void onStart() {
 		startMusicService();
 		if(myBroadcastReceiver == null){
-			IntentFilter intentfilter = new IntentFilter(Intent.ACTION_MEDIA_SCANNER_STARTED);
+			myBroadcastReceiver = new MyBroadcastReceiver();
+			IntentFilter intentfilter = new IntentFilter();
 			intentfilter.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
 			intentfilter.addDataScheme("file");
 			registerReceiver(myBroadcastReceiver, intentfilter);
@@ -209,7 +227,7 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
     }
     
     public void MusicPlay(String id){
-    	if (mService != null) {
+    	if (id != null && mService != null) {
     		long d = 0;
     		try{
     			d = Long.parseLong(id);
@@ -259,6 +277,12 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
         }
         return 0;
     }
+    
+	private void setMusicSeekTO(int mesc) {
+		if (mService != null) {
+			mService.playSeekTo(mesc);
+		}
+	}
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -283,8 +307,17 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 		public void onReceive(Context context, Intent intent) {
 			if (Intent.ACTION_MEDIA_SCANNER_FINISHED.equals(intent.getAction())) {
 				Log.i("Catch","ACTION_MEDIA_SCANNER_FINISHED");
-				currFragment.reLoadData();
-				currFragment.updateUI();
+				UpdateUITask task = new UpdateUITask(context, new UpdateUITask.TaskListener() {
+
+					public void updatePageData() {
+						currFragment.reLoadData();
+					}
+
+					public void updatePageUI() {
+						currFragment.updateUI();
+					}
+				});
+				task.executeOnExecutor(threadPool);
 			} else if (Intent.ACTION_MEDIA_SCANNER_STARTED.equals(intent.getAction())) {
 				Log.i("Catch","ACTION_MEDIA_SCANNER_STARTED");
 			}else if (Intent.ACTION_MEDIA_MOUNTED.equals(intent.getAction())) {
@@ -293,8 +326,6 @@ public class PlayMusicActivity extends SwitchCallbackFragmentActivity {
 				Log.i("Catch","ACTION_MEDIA_UNMOUNTED");
 			}else if (Intent.ACTION_MEDIA_EJECT.equals(intent.getAction())) {
 				Log.i("Catch","ACTION_MEDIA_EJECT");
-				currFragment.reLoadData();
-				currFragment.updateUI();
 			}
 
 		}

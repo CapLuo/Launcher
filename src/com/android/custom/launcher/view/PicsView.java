@@ -1,21 +1,22 @@
 package com.android.custom.launcher.view;
 
+import java.io.File;
+
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
-import android.media.ThumbnailUtils;
 import android.net.Uri;
-import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.util.AttributeSet;
-import android.view.KeyEvent;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -24,7 +25,9 @@ import android.widget.LinearLayout;
 
 import com.android.custom.launcher.R;
 import com.example.setting.ItemListActivity;
+import com.example.setting.util.MediaHelper;
 import com.example.setting.util.StoreUtil;
+import com.example.setting.util.Util;
 
 public class PicsView extends LinearLayout {
 	private ViewPager mPager;// 页卡内容
@@ -35,6 +38,7 @@ public class PicsView extends LinearLayout {
 	private ImageButton iBtnMenu;
 	private Cursor cursor;
 	private View layout;
+	private View layoutDefault;
 	private ImageButton iBtnDefault;
 	private String rootPath;
 
@@ -56,16 +60,27 @@ public class PicsView extends LinearLayout {
 
 	private void initView() {
 		layout = findViewById(R.id.layout_pic_main);
+		layoutDefault = findViewById(R.id.layout_pic_default);
 		iBtnDefault = (ImageButton) findViewById(R.id.btn_pic_default);
 		iBtnDefault.setOnClickListener(clickListener);
 		mPager = (ViewPager) findViewById(R.id.vPager);
-		rootPath = Environment.getExternalStorageDirectory().getAbsolutePath();
+		rootPath = Util.getRootFilePath();
 		cursor = loadAllGallery(mContext, rootPath);
 		mPager.setAdapter(new MyPagerAdapter(cursor));
-		mPager.setOnKeyListener(new OnKeyListener() {
+		// mPager.setOnKeyListener(new OnKeyListener() {
+		//
+		// public boolean onKey(View v, int keyCode, KeyEvent event) {
+		// return true;
+		// }
+		// });
 
-			public boolean onKey(View v, int keyCode, KeyEvent event) {
-				return true;
+		mPager.setOnTouchListener(new OnTouchListener() {
+
+			public boolean onTouch(View v, MotionEvent event) {
+				if (event.getAction() == MotionEvent.ACTION_DOWN) {
+					openPic();
+				}
+				return false;
 			}
 		});
 
@@ -75,19 +90,7 @@ public class PicsView extends LinearLayout {
 		iBtnRight.setOnClickListener(clickListener);
 		iBtnMenu = (ImageButton) findViewById(R.id.btn_pic_menu);
 		iBtnMenu.setOnClickListener(clickListener);
-
-		setOnFocusChangeListener(new OnFocusChangeListener() {
-
-			public void onFocusChange(View v, boolean hasFocus) {
-				if (hasFocus) {
-					iBtnLeft.setFocusable(true);
-					iBtnLeft.setFocusableInTouchMode(true);
-					iBtnLeft.requestFocus();
-				}
-
-			}
-		});
-		updatePath(true);
+		// updatePath(true);
 	}
 
 	public void updatePath() {
@@ -97,26 +100,102 @@ public class PicsView extends LinearLayout {
 	private void updatePath(boolean isFirst) {
 		String path = StoreUtil.loadPicPath(mContext);
 		if (path != null) {
-			int position = getPositionByPath(mContext, rootPath, path);
-			layout.setVisibility(View.VISIBLE);
-			iBtnDefault.setVisibility(View.GONE);
-			if (!isFirst) {
-				cursor = loadAllGallery(mContext, rootPath);
-				mPager.setAdapter(new MyPagerAdapter(cursor));
-				mPager.setCurrentItem(position);
+			File file = new File(path);
+			if (file.isFile()) {
+//				Toast.makeText(mContext, "file.isFile()", 500).show();
+				int position = getPositionByPath(mContext, rootPath, path);
+				if (position >= 0) {
+					layout.setVisibility(View.VISIBLE);
+					layoutDefault.setVisibility(View.GONE);
+					if (!isFirst) {
+						cursor = loadAllGallery(mContext, rootPath);
+						if(cursor != null){
+							mPager.setAdapter(new MyPagerAdapter(cursor));
+							mPager.setCurrentItem(position);
+						}
+					}
+					return;
+				}
 			}
-		} else {
-			layout.setVisibility(View.GONE);
-			iBtnDefault.setVisibility(View.VISIBLE);
 		}
+//		Toast.makeText(mContext, "file.isFile() error ", 500).show();
+		layout.setVisibility(View.GONE);
+		layoutDefault.setVisibility(View.VISIBLE);
+
+		setOnFocusChangeListener(new OnFocusChangeListener() {
+
+			public void onFocusChange(View v, boolean hasFocus) {
+				if (hasFocus) {
+					if (layoutDefault.getVisibility() == View.VISIBLE) {
+						iBtnDefault.setFocusable(true);
+						iBtnDefault.setFocusableInTouchMode(true);
+						iBtnDefault.requestFocus();
+					} else {
+						iBtnLeft.setFocusable(true);
+						iBtnLeft.setFocusableInTouchMode(true);
+						iBtnLeft.requestFocus();
+					}
+				}
+
+			}
+		});
 	}
 
 	public void savePath() {
-		if (iBtnDefault.getVisibility() == View.GONE)
-			StoreUtil.savePicPath(mContext,
-					((MyPagerAdapter) mPager.getAdapter()).getCurrPath());
-		if (cursor != null) {
-			cursor.close();
+		try {
+			if (layoutDefault.getVisibility() == View.GONE)
+				StoreUtil.savePicPath(mContext, ((MyPagerAdapter) mPager
+						.getAdapter()).getCurrPath(mPager.getCurrentItem()));
+			if (cursor != null) {
+				cursor.close();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void goOnClickDefault() {
+		Intent intent = new Intent();
+		intent.setClass(mContext, ItemListActivity.class);
+		intent.putExtra("position", 2);
+		intent.putExtra("path", "All");
+		mContext.startActivity(intent);
+	}
+
+	public void openAll() {
+		Intent intent = new Intent();
+		intent.setClass(mContext, ItemListActivity.class);
+		intent.putExtra("position", 2);
+		intent.putExtra("path", "All");
+		mContext.startActivity(intent);
+	}
+
+	public void openAllInOne(String path) {
+		Intent intent = new Intent();
+		intent.setClass(mContext, ItemListActivity.class);
+		intent.putExtra("position", 2);
+		intent.putExtra("path", path);
+		mContext.startActivity(intent);
+	}
+
+	public void openPic() {
+		try {
+			if (layoutDefault.getVisibility() == View.VISIBLE) {
+				openAll();
+			} else {
+				MyPagerAdapter adapter = (MyPagerAdapter) mPager.getAdapter();
+				Uri uri = Uri.parse("file://"
+						+ adapter.getCurrPath(mPager.getCurrentItem()));
+				Intent intent = new Intent(Intent.ACTION_VIEW);
+				intent.setDataAndType(uri,
+						adapter.getCurrMimeType(mPager.getCurrentItem()));
+				intent.setComponent(new ComponentName("com.android.gallery",
+						"com.android.camera.ViewImage"));
+				mContext.startActivity(intent);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			Log.e("Catch", "openPic is error");
 		}
 	}
 
@@ -131,17 +210,10 @@ public class PicsView extends LinearLayout {
 				mPager.setCurrentItem(p2 <= cursor.getCount() ? p2 : cursor
 						.getCount());
 			} else if (v.getId() == R.id.btn_pic_menu) {
-				Intent intent = new Intent();
-				intent.setClass(mContext, ItemListActivity.class);
-				intent.putExtra("position", 2);
-				intent.putExtra("path", cursor.getString(2));
-				mContext.startActivity(intent);
-			} else if(v.getId() == R.id.btn_pic_default){
-				Intent intent = new Intent();
-				intent.setClass(mContext, ItemListActivity.class);
-				intent.putExtra("position", 2);
-				intent.putExtra("path", "All");
-				mContext.startActivity(intent);
+				openAllInOne(((MyPagerAdapter) mPager.getAdapter())
+						.getCurrPath(mPager.getCurrentItem()));
+			} else if (v.getId() == R.id.btn_pic_default) {
+				openAllInOne("All");
 			}
 
 		}
@@ -167,8 +239,18 @@ public class PicsView extends LinearLayout {
 			return 0;
 		}
 
-		public String getCurrPath() {
-			return cursor.getString(2);
+		public String getCurrPath(int position) {
+			if (cursor != null && cursor.moveToPosition(position)) {
+				return cursor.getString(2);
+			}
+			return "";
+		}
+
+		public String getCurrMimeType(int position) {
+			if (cursor != null && cursor.moveToPosition(position)) {
+				return cursor.getString(3);
+			}
+			return "";
 		}
 
 		@Override
@@ -194,10 +276,14 @@ public class PicsView extends LinearLayout {
 			});
 			ImageView imageView = (ImageView) view.findViewById(R.id.img);
 
-			if (cursor.moveToPosition(position)) {
+			if (cursor != null && cursor.moveToPosition(position)) {
 				// TODO 490,300
-				Bitmap bitmap = getImageThumbnail(cursor.getString(2), 490, 300);
-				BitmapDrawable bd = new BitmapDrawable(bitmap);
+				Bitmap bitmap = MediaHelper.getImageThumbnail(490, 300,
+						cursor.getString(2));
+				Bitmap bitmap2 = MediaHelper.getRoundedBitmap(bitmap, 12);
+				if (bitmap2 == null)
+					bitmap2 = bitmap;
+				BitmapDrawable bd = new BitmapDrawable(bitmap2);
 				imageView.setBackgroundDrawable(bd);
 			}
 			// imageView.setBackgroundResource(bitmapList.get(position));
@@ -225,7 +311,7 @@ public class PicsView extends LinearLayout {
 	}
 
 	public int getPositionByPath(Context context, String rootPath, String path) {
-		Cursor cursor = null;
+		Cursor c = null;
 		try {
 			Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
 			String[] columns = new String[] { MediaStore.Images.Media._ID,
@@ -233,51 +319,21 @@ public class PicsView extends LinearLayout {
 					MediaStore.Images.Media.DATA,
 					MediaStore.Images.Media.MIME_TYPE };
 			// 要读的列名,这些常量可以查GOOGLE官方开发文档,TITLE是标题 DATA是路径//REGEXP
-			cursor = context.getContentResolver().query(uri, columns,
+			c = context.getContentResolver().query(uri, columns,
 					MediaStore.Images.Media.DATA + " LIKE ?",
 					new String[] { rootPath + "%" }, null);
-			while (cursor.moveToNext()) {
-				if(path.equals(cursor.getString(2))){
-					return cursor.getPosition();
+			while (c.moveToNext()) {
+				if (path.equals(c.getString(2))) {
+					return c.getPosition();
 				}
 			}
-			return 0;
+			return -1;
 		} catch (SQLiteException e) {
 			e.printStackTrace();
-			return 0;
+			return -1;
 		} finally {
-			if (cursor != null)
-				cursor.close();
+			if (c != null)
+				c.close();
 		}
-	}
-
-	public Bitmap getImageThumbnail(String imagePath, int width, int height) {
-		Bitmap bitmap = null;
-		BitmapFactory.Options options = new BitmapFactory.Options();
-		options.inJustDecodeBounds = true;
-		// 获取这个图片的宽和高，注意此处的bitmap为null
-		bitmap = BitmapFactory.decodeFile(imagePath, options);
-		options.inJustDecodeBounds = false; // 设为 false
-		// 计算缩放比
-		int h = options.outHeight;
-		int w = options.outWidth;
-		int beWidth = w / width;
-		int beHeight = h / height;
-		int be = 1;
-		if (beWidth < beHeight) {
-			be = beWidth;
-		} else {
-			be = beHeight;
-		}
-		if (be <= 0) {
-			be = 1;
-		}
-		options.inSampleSize = be;
-		// 重新读入图片，读取缩放后的bitmap，注意这次要把options.inJustDecodeBounds 设为 false
-		bitmap = BitmapFactory.decodeFile(imagePath, options);
-		// 利用ThumbnailUtils来创建缩略图，这里要指定要缩放哪个Bitmap对象
-		bitmap = ThumbnailUtils.extractThumbnail(bitmap, width, height,
-				ThumbnailUtils.OPTIONS_RECYCLE_INPUT);
-		return bitmap;
 	}
 }

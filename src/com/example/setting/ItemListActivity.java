@@ -1,5 +1,8 @@
 package com.example.setting;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -10,14 +13,15 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
-import cn.ireliance.android.common.ui.SwitchCallbackFragmentActivity;
 
 import com.android.custom.launcher.R;
 import com.example.fragment.GridItemCallBack;
 import com.example.fragment.MyGridFragment;
+import com.example.fragment.SwitchCallbackFragmentActivity;
 import com.example.setting.adapter.LeftMainMenuAdapter;
 import com.example.setting.adapter.MyMedia;
 import com.example.setting.listener.KeyBackListener;
+import com.example.setting.util.UpdateUITask;
 import com.example.setting.view.UsbTitleView;
 
 /**
@@ -40,6 +44,7 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 	private MyGridFragment currFragment;
 	private UsbTitleView usbTitleView;
 	private MyBroadcastReceiver myBroadcastReceiver;
+	private ExecutorService threadPool;
 
 	/**
 	 * Whether or not the activity is in two-pane mode, i.e. running on a tablet
@@ -50,6 +55,9 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 		super.onCreate(savedInstanceState);
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.activity_item_twopane);
+		
+		threadPool = Executors.newCachedThreadPool();
+		
 		usbTitleView = (UsbTitleView)findViewById(R.id.usb_title);
 		ItemListFragment itemListFragment = (ItemListFragment) getSupportFragmentManager().findFragmentById(
 				R.id.item_list);
@@ -77,11 +85,13 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 				break;
 			}
 			itemListFragment.getListView().setItemChecked(position, true);
+			itemListFragment.getListView().setSelection(position);
 		} else {
 			adapter.setSelector(0);
 			adapter.notifyDataSetChanged();
 			onItemSelected(null, 0);
 			itemListFragment.getListView().setItemChecked(0, true);
+			itemListFragment.getListView().setSelection(0);
 		}
 	}
 
@@ -89,7 +99,8 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 	protected void onStart() {
 		super.onStart();
 		if(myBroadcastReceiver == null){
-			IntentFilter intentfilter = new IntentFilter(Intent.ACTION_MEDIA_SCANNER_STARTED);
+			myBroadcastReceiver = new MyBroadcastReceiver();
+			IntentFilter intentfilter = new IntentFilter();
 			intentfilter.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
 			intentfilter.addDataScheme("file");
 			registerReceiver(myBroadcastReceiver, intentfilter);
@@ -176,8 +187,18 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 		public void onReceive(Context context, Intent intent) {
 			if (Intent.ACTION_MEDIA_SCANNER_FINISHED.equals(intent.getAction())) {
 				Log.i("Catch","ACTION_MEDIA_SCANNER_FINISHED");
-				currFragment.reLoadData();
-				currFragment.updateUI();
+				
+				UpdateUITask task = new UpdateUITask(context, new UpdateUITask.TaskListener() {
+
+					public void updatePageData() {
+						currFragment.reLoadData();
+					}
+
+					public void updatePageUI() {
+						currFragment.updateUI();
+					}
+				});
+				task.executeOnExecutor(threadPool);
 			} else if (Intent.ACTION_MEDIA_SCANNER_STARTED.equals(intent.getAction())) {
 				Log.i("Catch","ACTION_MEDIA_SCANNER_STARTED");
 			}else if (Intent.ACTION_MEDIA_MOUNTED.equals(intent.getAction())) {
@@ -186,8 +207,6 @@ public class ItemListActivity extends SwitchCallbackFragmentActivity implements
 				Log.i("Catch","ACTION_MEDIA_UNMOUNTED");
 			}else if (Intent.ACTION_MEDIA_EJECT.equals(intent.getAction())) {
 				Log.i("Catch","ACTION_MEDIA_EJECT");
-				currFragment.reLoadData();
-				currFragment.updateUI();
 			}
 
 		}

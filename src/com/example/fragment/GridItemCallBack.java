@@ -3,8 +3,6 @@ package com.example.fragment;
 import android.support.v4.app.Fragment;
 import android.view.View;
 import android.widget.AdapterView;
-import cn.ireliance.android.common.ui.ItemSelectedCallback;
-import cn.ireliance.android.common.ui.SwitchCallbackFragmentActivity;
 
 public class GridItemCallBack implements ItemSelectedCallback {
 	private SwitchCallbackFragmentActivity activty;
@@ -21,7 +19,7 @@ public class GridItemCallBack implements ItemSelectedCallback {
 //		Intent detailIntent = new Intent(activty, .class);
 //		activty.startActivity(detailIntent);
 		if(fragment instanceof MyGridFragment){
-			((MyGridFragment)fragment).openFile(position);
+			((MyGridFragment)fragment).open(position);
 		}
 	}
 

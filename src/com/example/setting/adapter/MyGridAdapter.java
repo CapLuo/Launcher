@@ -1,6 +1,8 @@
 package com.example.setting.adapter;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
@@ -12,14 +14,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.android.custom.launcher.R;
+import com.example.setting.util.ImageAsyncTask;
 
 public class MyGridAdapter extends BaseAdapter {
 	private LayoutInflater mInflater;
 	private List<MyMedia> mList;
+	private Context mContext;
 
 	private boolean isDelete = false;
 	private boolean isPlayMusic = false;
 	private boolean isList = false;
+	private ExecutorService threadPool;
 
 	static class ListItemView {
 		public ImageView imgLogo;
@@ -30,9 +35,11 @@ public class MyGridAdapter extends BaseAdapter {
 	}
 
 	public MyGridAdapter(Context context, List<MyMedia> list) {
+		this.mContext = context;
 		mInflater = (LayoutInflater) context
 				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 		this.mList = list;
+		threadPool = Executors.newCachedThreadPool();
 	}
 
 	public int getCount() {
@@ -78,7 +85,7 @@ public class MyGridAdapter extends BaseAdapter {
 	public View getView(final int position, View convertView, ViewGroup parent) {
 		final ListItemView listItemView;
 		if (convertView == null) {
-			if(isList)
+			if (isList)
 				convertView = mInflater.inflate(R.layout.grid_list_item, null);
 			else
 				convertView = mInflater.inflate(R.layout.grid_item, null);
@@ -114,14 +121,16 @@ public class MyGridAdapter extends BaseAdapter {
 			listItemView.imgLogoPlay.setVisibility(View.VISIBLE);
 			listItemView.textTotal.setVisibility(View.INVISIBLE);
 		} else if (type == MyMedia.TYPE_DIR || type == MyMedia.TYPE_ALL) {
-			listItemView.textTotal.setText(myMedia.getTotal()
-					+ " in total");
+			listItemView.textTotal.setText(myMedia.getTotal() + " in total");
 			listItemView.textTotal.setVisibility(View.VISIBLE);
 			listItemView.imgLogoPlay.setVisibility(View.GONE);
 		} else {
 			listItemView.imgLogoPlay.setVisibility(View.GONE);
-			if (isPlayMusic && !isList && (type == MyMedia.TYPE_MUSIC || type == MyMedia.TYPE_MUSIC_N)) {
-				listItemView.textTotal.setText(convertTime(myMedia.getDuration()));
+			if (isPlayMusic
+					&& !isList
+					&& (type == MyMedia.TYPE_MUSIC || type == MyMedia.TYPE_MUSIC_N)) {
+				listItemView.textTotal.setText(convertTime(myMedia
+						.getDuration()));
 				listItemView.textTotal.setVisibility(View.VISIBLE);
 			} else
 				listItemView.textTotal.setVisibility(View.INVISIBLE);
@@ -138,6 +147,9 @@ public class MyGridAdapter extends BaseAdapter {
 		}
 
 		listItemView.textInfo.setText(myMedia.getName());
+
+		new ImageAsyncTask(mContext, myMedia, 130, 130, listItemView.imgLogo,
+				listItemView.imgLogoPlay).executeOnExecutor(threadPool);
 
 		return convertView;
 	}

@@ -52,4 +52,7 @@ public class DateUtil {
 		return month;
 	}
 
+	public static String getTime(int i) {
+		return (i < 10 ? "0"+i : i + "");
+	}
 }

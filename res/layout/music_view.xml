@@ -9,10 +9,12 @@
         android:layout_height="match_parent"
         android:background="@drawable/home_music_background"
         android:orientation="horizontal"
+        android:gravity="left"
         android:visibility="visible" >
 
         <ImageView
             android:id="@+id/music_image"
+            android:layout_gravity="left"
             android:layout_width="120dp"
             android:layout_height="match_parent"
             android:contentDescription="@drawable/music_play_picture_default"
@@ -58,7 +60,7 @@
                 <SeekBar
                     android:id="@+id/music_seekbar"
                     style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="220dp"
+                    android:layout_width="200dp"
                     android:layout_height="wrap_content"
                     android:clickable="false"
                     android:focusable="false" />
@@ -88,6 +90,7 @@
                         android:id="@+id/music_prev"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:nextFocusUp="@+id/music_prev"
                         android:background="@drawable/drawable_music_previous_button"
                         android:contentDescription="@drawable/drawable_music_previous_button" />
 
@@ -95,6 +98,7 @@
                         android:id="@+id/music_play"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:nextFocusUp="@+id/music_play"
                         android:layout_marginLeft="15dp"
                         android:background="@drawable/drawable_music_paly_button"
                         android:contentDescription="@drawable/drawable_music_paly_button" />
@@ -103,6 +107,7 @@
                         android:id="@+id/music_next"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:nextFocusUp="@+id/music_next"
                         android:layout_marginLeft="15dp"
                         android:background="@drawable/drawable_music_next_button"
                         android:contentDescription="@drawable/drawable_music_next_button" />
@@ -120,6 +125,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginRight="5dp"
+                        android:nextFocusUp="@+id/music_volume"
                         android:background="@drawable/drawable_music_volume_button"
                         android:contentDescription="@drawable/drawable_music_volume_button" />
 
@@ -136,6 +142,7 @@
                         android:id="@+id/music_list"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:nextFocusUp="@+id/music_list"
                         android:layout_marginRight="15dp"
                         android:background="@drawable/drawable_music_list_button"
                         android:contentDescription="@drawable/drawable_music_list_button" />
@@ -150,7 +157,7 @@
         android:layout_height="match_parent"
         android:background="@drawable/home_music_default"
         android:orientation="horizontal"
-        android:visibility="gone" >
+        android:visibility="visible" >
 
         <TextView
             android:layout_width="0dip"

@@ -1,9 +1,9 @@
 package com.android.custom.launcher;
 
-import com.android.custom.launcher.services.LauncherService;
-
 import android.app.Application;
 import android.content.Intent;
+
+import com.android.custom.launcher.services.LauncherService;
 
 public class MainApplication extends Application {
 

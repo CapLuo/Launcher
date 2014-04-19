@@ -1,6 +1,5 @@
 package com.android.custom.launcher.services;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -10,12 +9,15 @@ import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.MediaPlayer;
-import android.os.AsyncTask;
 import android.os.Binder;
 import android.os.Handler;
 import android.os.IBinder;
+import android.util.Log;
 
 import com.android.custom.launcher.util.FilesUtil;
 import com.android.custom.launcher.util.HttpHelper;
@@ -33,13 +35,15 @@ public class LauncherService extends Service {
 	public static final int MUSIC_REFRESH_ACTION = 2;
 	public static final int MUSIC_REFRESH_BUTTON_ACTION = 3;
 
-    private Handler mHandler = new Handler();
+	private Handler mHandler = new Handler();
 
 	private List<Music> mMusics = new CopyOnWriteArrayList<Music>();
 	private int mCurPosition = -1, mCount = 0;
 	private MediaPlayer mPlayer;
 	private PlayMode mMode = PlayMode.ALL;
-	private boolean isPause = false;
+	private boolean isPause = true;
+	private int mMesc;
+	private DataReciver mReciver = new DataReciver();
 
 	private boolean isRefreshMusicView = true;
 	private Runnable mRefreshMusicView = new Runnable() {
@@ -47,8 +51,15 @@ public class LauncherService extends Service {
 		public void run() {
 			while (isRefreshMusicView) {
 				try {
-					if(refreshListener != null){
-						refreshListener.refresh(getStartTime(), getMaxTime(), isPause, mMode);
+					if (refreshListener != null) {
+						int mesc;
+						if (isPause) {
+							mesc = mMesc;
+						} else {
+							mesc = getStartTime();
+						}
+						refreshListener.refresh(mesc, getMaxTime(), isPause,
+								mMode);
 					}
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
@@ -57,21 +68,30 @@ public class LauncherService extends Service {
 			}
 		}
 	};
-	
+
 	private Runnable mReciverCloud = new Runnable() {
-		
+
 		public void run() {
-			new GetWetherInNet().execute();
+			new Thread(new Runnable() {
+				public void run() {
+					getWeather();
+				}
+			}).start();
 		}
 	};
 
-	public interface RefreshListener{
-		public void refresh(int startTime, int maxTime, boolean isPause, PlayMode mode);
-		public void setPlayMusicPostion(int position);
+	public interface RefreshListener {
+		public void refresh(int startTime, int maxTime, boolean isPause,
+				PlayMode mode);
+
+		public void setPlayMusicPostion(int position, boolean isNeedPlay);
+
 		public void refreshWether(int code, int temp);
 	}
+
 	private RefreshListener refreshListener = null;
-	public void setRefreshListener(RefreshListener refreshListener){
+
+	public void setRefreshListener(RefreshListener refreshListener) {
 		this.refreshListener = refreshListener;
 	}
 
@@ -101,10 +121,6 @@ public class LauncherService extends Service {
 		} else {
 			mCount = mMusics.size();
 		}
-		if (mPlayer != null && mPlayer.isPlaying()) {
-			isRefreshMusicView = true;
-			new Thread(mRefreshMusicView).start();
-		}
 		super.onRebind(intent);
 	}
 
@@ -113,21 +129,37 @@ public class LauncherService extends Service {
 			return LauncherService.this;
 		}
 	}
-	
+
+	@Override
+	public void onCreate() {
+		super.onCreate();
+		IntentFilter filter = new IntentFilter();
+		filter.addAction(Intent.ACTION_MEDIA_MOUNTED);
+		filter.addAction(Intent.ACTION_MEDIA_UNMOUNTED);
+		filter.addAction(Intent.ACTION_MEDIA_SCANNER_FINISHED);
+		filter.addDataScheme("file");
+		registerReceiver(mReciver, filter);
+		isRefreshMusicView = true;
+		new Thread(mRefreshMusicView).start();
+	}
+
 	@Override
 	public void onDestroy() {
-		mPlayer.release();
-		mPlayer = null;
+		if (mPlayer != null) {
+			mPlayer.release();
+			mPlayer = null;
+		}
+		unregisterReceiver(mReciver);
+		isRefreshMusicView = false;
 		super.onDestroy();
 	}
 
-
 	public void play(int position) {
 		synchronized (lock) {
-
-			if (isPause && mCurPosition == position) {
+			if (isPause && mCurPosition == position && mPlayer != null) {
 				isPause = false;
 				mPlayer.start();
+				mPlayer.seekTo(mMesc);
 			} else {
 				stop();
 				if (mCount == 0) {
@@ -138,38 +170,50 @@ public class LauncherService extends Service {
 					mPlayer = new MediaPlayer();
 					mPlayer.setDataSource(mMusics.get(mCurPosition).getUrl());
 					mPlayer.prepare();
-				} catch (IllegalArgumentException e) {
-					e.printStackTrace();
-				} catch (IllegalStateException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				mPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+					mPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
 
-					public void onCompletion(MediaPlayer mp) {
-						stop();
-						int position = 0;
-						if (mCount == 0) {
-							return;
+						public boolean onError(MediaPlayer player, int what,
+								int arg2) {
+							stop();
+							if (refreshListener != null)
+							refreshListener.refresh(0, getMaxTime(), true,
+									mMode);
+							return false;
 						}
-						if (mMode == PlayMode.ALL) {
-							position = (mCurPosition + 1) % mCount;
-						} else if (mMode == PlayMode.RANDOM) {
-							java.util.Random r = new java.util.Random();
-							position = (Math.abs(r.nextInt()) % mCount);
-						} else {
-							position = mCurPosition;
+					});
+					mPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+
+						public void onCompletion(MediaPlayer mp) {
+							stop();
+							int position = 0;
+							if (mCount == 0) {
+								return;
+							}
+							if (mMode == PlayMode.ALL) {
+								position = (mCurPosition + 1) % mCount;
+							} else if (mMode == PlayMode.RANDOM) {
+								java.util.Random r = new java.util.Random();
+								position = (Math.abs(r.nextInt()) % mCount);
+							} else {
+								position = mCurPosition;
+							}
+							if (refreshListener != null) {
+								refreshListener.setPlayMusicPostion(position, true);
+								mMesc = 0;
+							}
 						}
-						if (refreshListener != null) {
-							refreshListener.setPlayMusicPostion(position);
+					});
+					mPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+
+						public void onPrepared(MediaPlayer player) {
+							isPause = false;
+							player.start();
 						}
-					}
-				});
-				isPause = false;
-				mPlayer.start();
-				isRefreshMusicView = true;
-				new Thread(mRefreshMusicView).start();
+					});
+				} catch (Exception e) {
+					e.printStackTrace();
+					stop();
+				}
 
 			}
 		}
@@ -178,7 +222,23 @@ public class LauncherService extends Service {
 	public void playID(long id) {
 		for (int i = 0; i < mMusics.size(); i++) {
 			if (mMusics.get(i).getId() == id) {
+				refreshListener.setPlayMusicPostion(i, true);
+				mMesc = 0;
 				this.play(i);
+			}
+		}
+	}
+
+	public void playSeekTo(int msec) {
+		synchronized (lock) {
+			if (mPlayer != null) {
+				if (!isPause) {
+					mPlayer.seekTo(msec);
+				} else {
+					mMesc = msec;
+				}
+			} else {
+				mMesc = msec;
 			}
 		}
 	}
@@ -203,6 +263,7 @@ public class LauncherService extends Service {
 		synchronized (lock) {
 			if (mPlayer != null && mPlayer.isPlaying()) {
 				isPause = true;
+				mMesc = mPlayer.getCurrentPosition();
 				mPlayer.pause();
 			}
 		}
@@ -210,8 +271,7 @@ public class LauncherService extends Service {
 
 	public void stop() {
 		synchronized (lock) {
-			isRefreshMusicView = false;
-			if (mPlayer != null && mPlayer.isPlaying()) {
+			if (mPlayer != null) {
 				isPause = false;
 				mPlayer.stop();
 				mPlayer.release();
@@ -221,16 +281,20 @@ public class LauncherService extends Service {
 	}
 
 	public int getStartTime() {
-		if (mPlayer != null) {
-			return mPlayer.getCurrentPosition();
+		synchronized (lock) {
+			if (mPlayer != null) {
+				return mPlayer.getCurrentPosition();
+			}
+			return 0;
 		}
-		return 0;
 	}
 
 	public int getMaxTime() {
 		if (mPlayer != null) {
 			return mPlayer.getDuration();
 		}
+		if (mCurPosition >= 0 && mCurPosition < mCount)
+			return (int) mMusics.get(mCurPosition).getTime();
 		return 0;
 	}
 
@@ -259,7 +323,7 @@ public class LauncherService extends Service {
 		return mCurPosition;
 	}
 
-	public void changeMode () {
+	public void changeMode() {
 		if (mMode == PlayMode.ALL) {
 			mMode = PlayMode.RANDOM;
 		} else if (mMode == PlayMode.RANDOM) {
@@ -268,32 +332,46 @@ public class LauncherService extends Service {
 			mMode = PlayMode.ALL;
 		}
 	}
+
 	public PlayMode getMode() {
 		return mMode;
 	}
 
-    private void getWeather() {
+	private void getWeather() {
 		String city = HttpHelper.getCity();
-		String woeid = HttpHelper.getWoeid(city);
-		if (woeid != null) {
-			woeid = xmlToString(woeid);
+		String woeid = null;
+		if (city == null) {
+			mHandler.postDelayed(mReciverCloud, 3000);// 60 * 1000 * 2);
+			return;
 		} else {
-			mHandler.postDelayed(mReciverCloud, 60 * 1000 * 2);
+			woeid = HttpHelper.getWoeid(city);
+			if (woeid != null)
+				woeid = xmlToString(woeid);
+			else {
+				mHandler.postDelayed(mReciverCloud, 3000);// 60 * 1000 * 2);
+				return;
+			}
+		}
+		try {
+			woeid = woeid.substring(woeid.lastIndexOf("woeid") + 6,
+					woeid.lastIndexOf("woeid") + 14);
+			String wether = HttpHelper.getWeather(woeid);
+			if (wether != null) {
+				xmlToStrings(wether);
+			} else {
+				mHandler.postDelayed(mReciverCloud, 60 * 1000 * 2);
+				return;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			mHandler.postDelayed(mReciverCloud, 3000);// 60 * 1000 * 2);
 			return;
 		}
-		woeid = woeid.substring(woeid.lastIndexOf("woeid") + 6, woeid.lastIndexOf("woeid") + 14);
-		String wether = HttpHelper.getWeather(woeid);
-		if (wether != null) {
-			xmlToStrings(wether);
-		} else {
-			mHandler.postDelayed(mReciverCloud, 60 * 1000 * 2);
-			return;
-		}
-    }
+	}
 
-    private String xmlToString(String woeid) {
-        Document doc = null;
-        try {
+	private String xmlToString(String woeid) {
+		Document doc = null;
+		try {
 			doc = DocumentHelper.parseText(woeid);
 			Element root = doc.getRootElement();
 			Element iters = root.element("s");
@@ -302,12 +380,12 @@ public class LauncherService extends Service {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-        return null;
-    }
+		return null;
+	}
 
-    private void xmlToStrings(String woeid) {
-        Document doc = null;
-        try {
+	private void xmlToStrings(String woeid) {
+		Document doc = null;
+		try {
 			doc = DocumentHelper.parseText(woeid);
 			Element root = doc.getRootElement();
 			Element cancel = root.element("channel");
@@ -316,24 +394,35 @@ public class LauncherService extends Service {
 			final int code = Integer.parseInt(iters.attributeValue("code"));
 			final int temp = Integer.parseInt(iters.attributeValue("temp"));
 			refreshListener.refreshWether(code, temp);
+			mHandler.postDelayed(mReciverCloud, 60 * 1000 * 60);
 		} catch (DocumentException e) {
 			e.printStackTrace();
 		}
-    }
-   
-    private class GetWetherInNet extends AsyncTask<Void, Void, Void> {
+	}
 
-		@Override
-		protected Void doInBackground(Void... params) {
-			getWeather();
-			return null;
+	private class DataReciver extends BroadcastReceiver {
+
+		public void onReceive(Context context, Intent intent) {
+			String action = intent.getAction();
+			if (Intent.ACTION_MEDIA_MOUNTED.equals(action)) {
+
+			} else if (Intent.ACTION_MEDIA_UNMOUNTED.equals(action)) {
+
+			} else if (Intent.ACTION_MEDIA_SCANNER_FINISHED.equals(action)) {
+				mMusics = FilesUtil.getDataMusics(LauncherService.this);
+				if (mMusics == null) {
+					mCount = 0;
+					refreshListener.setPlayMusicPostion(0, false);
+					mMesc = 0;
+					stop();
+				} else {
+					mCount = mMusics.size();
+					refreshListener.setPlayMusicPostion(mCurPosition, false);
+					mMesc = 0;
+				}
+			}
 		}
 
-		@Override
-		protected void onPostExecute(Void result) {
-			mHandler.postDelayed(mReciverCloud, 60 * 1000 * 60);
-			super.onPostExecute(result);
-		}
-    	
-    }
+	}
+
 }

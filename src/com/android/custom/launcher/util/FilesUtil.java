@@ -15,6 +15,7 @@ import android.provider.BaseColumns;
 import android.provider.MediaStore;
 import android.provider.MediaStore.Audio.AudioColumns;
 import android.provider.MediaStore.MediaColumns;
+import android.widget.Toast;
 
 import com.android.custom.launcher.util.BitmapUtils.ImageHolder;
 
@@ -34,6 +35,7 @@ public class FilesUtil {
 				long id = cursor.getLong(cursor.getColumnIndex(BaseColumns._ID));
 				String title = cursor.getString(cursor
 						.getColumnIndex(MediaColumns.TITLE));
+				
 				String name = cursor.getString(cursor.
 						getColumnIndex(MediaColumns.DISPLAY_NAME));
 				String singer = cursor.getString(cursor

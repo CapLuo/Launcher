@@ -26,15 +26,17 @@ public class MyMedia {
 
 	private String mimeType;
 
-	//绝对路径
+	// 绝对路径
 	private String path;
 
 	private boolean isCheck = false;
 
 	private String id;
 
-	//音乐时长
+	// 音乐时长
 	private Integer duration;
+
+	private String albumArtPath;
 
 	public Object getImage() {
 		return image;
@@ -108,4 +110,11 @@ public class MyMedia {
 		this.duration = duration;
 	}
 
+	public String getAlbumArtPath() {
+		return albumArtPath;
+	}
+
+	public void setAlbumArtPath(String albumArtPath) {
+		this.albumArtPath = albumArtPath;
+	}
 }

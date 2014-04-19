@@ -7,8 +7,7 @@
     <TextView
         android:id="@+id/title"
         android:layout_width="match_parent"
-        android:layout_height="0dip"
-        android:layout_weight="1"
+        android:layout_height="wrap_content"
         android:background="@drawable/app_title_background"
         android:gravity="center"
         android:text="@string/apps"
@@ -18,12 +17,14 @@
     <GridView
         android:id="@+id/myApps"
         android:layout_width="match_parent"
-        android:layout_height="0dip"
-        android:layout_weight="11"
+        android:layout_height="match_parent"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginTop="20dp"
+        android:gravity="center_vertical"
+        android:horizontalSpacing="60dp"
+        android:verticalSpacing="40dp"
         android:numColumns="6"
-        android:stretchMode="columnWidth"
-        android:horizontalSpacing="22dp"
-        android:gravity="center"
-        android:verticalSpacing="12dp" />
+        android:stretchMode="columnWidth"/>
 
 </LinearLayout>

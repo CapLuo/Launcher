@@ -13,8 +13,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:flipInterval="30"
-            android:focusable="false"
-            android:focusableInTouchMode="false"
             android:persistentDrawingCache="animation" />
 
         <RelativeLayout
@@ -48,10 +46,28 @@
             android:background="@drawable/pic_menu_btn_selector" />
     </FrameLayout>
 
-    <ImageButton
-        android:id="@+id/btn_pic_default"
+    <RelativeLayout
+        android:id="@+id/layout_pic_default"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/pic_btn_default_selector" />
+        android:layout_height="match_parent" >
+
+        <ImageButton
+            android:id="@+id/btn_pic_default"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/home_gallery_default" />
+
+        <TextView
+            android:id="@+id/text_gallery_default"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="80dp"
+            android:text="Gallery"
+            android:textColor="@android:color/white"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
 
 </FrameLayout>
